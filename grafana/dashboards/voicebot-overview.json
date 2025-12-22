@@ -1,0 +1,198 @@
+{
+  "dashboard": {
+    "title": "Voicebot SAV Wouippleul - Overview",
+    "tags": ["voicebot", "sav", "monitoring"],
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Appels Actifs",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "voicebot_active_calls",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 10},
+                {"color": "red", "value": 15}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Total Appels par Statut",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 18, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(voicebot_calls_total[5m])",
+            "legendFormat": "{{status}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Appels par Type de Problème",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "voicebot_calls_by_problem_type",
+            "legendFormat": "{{problem_type}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Appels par Sentiment",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
+        "targets": [
+          {
+            "expr": "voicebot_calls_by_sentiment",
+            "legendFormat": "{{sentiment}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "legend": {"displayMode": "table", "placement": "right"}
+        }
+      },
+      {
+        "id": 5,
+        "title": "Appels par Tag",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
+        "targets": [
+          {
+            "expr": "voicebot_calls_by_tag",
+            "legendFormat": "{{tag}} ({{severity}})",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Durée Moyenne des Appels",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(voicebot_call_duration_seconds_sum[5m]) / rate(voicebot_call_duration_seconds_count[5m])",
+            "legendFormat": "Durée moyenne (secondes)",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Appels Hors Horaires",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "voicebot_calls_outside_business_hours",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 5},
+                {"color": "red", "value": 10}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 8,
+        "title": "Cache Hits vs Misses",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(voicebot_cache_hits_total[5m])",
+            "legendFormat": "Hits ({{cache_type}})",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(voicebot_cache_misses_total[5m])",
+            "legendFormat": "Misses ({{cache_type}})",
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Latence API",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "rate(voicebot_api_latency_seconds_sum[5m]) / rate(voicebot_api_latency_seconds_count[5m])",
+            "legendFormat": "{{api}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Erreurs API",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "rate(voicebot_deepgram_errors_total[5m])",
+            "legendFormat": "Deepgram Errors",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(voicebot_groq_errors_total[5m])",
+            "legendFormat": "Groq Errors",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(voicebot_openai_tts_errors_total[5m])",
+            "legendFormat": "OpenAI TTS Errors",
+            "refId": "C"
+          }
+        ]
+      }
+    ],
+    "schemaVersion": 36,
+    "version": 1
+  }
+}

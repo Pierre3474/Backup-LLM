@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - Base de données clients
+  postgres-clients:
+    image: postgres:16-alpine
+    container_name: voicebot-db-clients
+    environment:
+      POSTGRES_DB: db_clients
+      POSTGRES_USER: voicebot
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-voicebot_secure_2024}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_clients_data:/var/lib/postgresql/data
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    networks:
+      - voicebot-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voicebot -d db_clients"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL - Base de données tickets
+  postgres-tickets:
+    image: postgres:16-alpine
+    container_name: voicebot-db-tickets
+    environment:
+      POSTGRES_DB: db_tickets
+      POSTGRES_USER: voicebot
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-voicebot_secure_2024}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_tickets_data:/var/lib/postgresql/data
+    networks:
+      - voicebot-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voicebot -d db_tickets"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Prometheus - Collecteur de métriques
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: voicebot-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9092:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - voicebot-network
+    restart: unless-stopped
+    depends_on:
+      - postgres-clients
+      - postgres-tickets
+
+  # Grafana - Visualisation des métriques
+  grafana:
+    image: grafana/grafana:latest
+    container_name: voicebot-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin_voicebot_2024}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      # Passer le mot de passe PostgreSQL pour la datasource
+      - DB_PASSWORD=${DB_PASSWORD:-voicebot_secure_2024}
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - voicebot-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - postgres-tickets
+
+  # PgAdmin (optionnel) - Interface web pour PostgreSQL
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: voicebot-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@voicebot.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-pgadmin_voicebot_2024}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - voicebot-network
+    restart: unless-stopped
+    depends_on:
+      - postgres-clients
+      - postgres-tickets
+
+# Réseaux
+networks:
+  voicebot-network:
+    driver: bridge
+
+# Volumes persistants
+volumes:
+  postgres_clients_data:
+    driver: local
+  postgres_tickets_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  pgadmin_data:
+    driver: local

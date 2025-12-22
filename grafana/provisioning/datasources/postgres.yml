@@ -1,0 +1,23 @@
+# Configuration Grafana - Datasource PostgreSQL pour Voicebot Tickets
+# Ce fichier est automatiquement chargé par Grafana au démarrage
+
+apiVersion: 1
+
+datasources:
+  # Base de données tickets (db_tickets)
+  - name: PostgreSQL-Tickets
+    type: postgres
+    access: proxy
+    # Utiliser le nom du service Docker (réseau interne)
+    url: postgres-tickets:5432
+    database: db_tickets
+    user: voicebot
+    # Le mot de passe est passé via variable d'environnement dans docker-compose.yml
+    secureJsonData:
+      password: ${DB_PASSWORD}
+    jsonData:
+      sslmode: 'disable'
+      postgresVersion: 1600  # PostgreSQL 16
+      timescaledb: false
+    isDefault: true
+    editable: true

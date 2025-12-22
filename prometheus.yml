@@ -1,0 +1,46 @@
+# Configuration Prometheus pour le monitoring du Voicebot SAV Wouippleul
+global:
+  scrape_interval: 15s  # Scraper les métriques toutes les 15 secondes
+  evaluation_interval: 15s  # Évaluer les règles toutes les 15 secondes
+  external_labels:
+    service: 'voicebot-sav'
+    environment: 'production'
+
+# Configuration des alertes (optionnel)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: []
+
+# Règles de recording et alerting (optionnel)
+# rule_files:
+#   - "alert_rules.yml"
+
+# Configuration du scraping
+scrape_configs:
+  # Job pour le voicebot (server.py expose les métriques sur port 9091)
+  - job_name: 'voicebot'
+    static_configs:
+      - targets: ['host.docker.internal:9091']  # Pour Docker sur Mac/Windows
+        labels:
+          instance: 'voicebot-main'
+          component: 'server'
+
+    # Si vous lancez Prometheus en local (hors Docker), utilisez localhost:
+    # - targets: ['localhost:9091']
+
+  # Job Prometheus lui-même (auto-monitoring)
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          instance: 'prometheus'
+          component: 'monitoring'
+
+  # Exemple de métriques supplémentaires (si vous ajoutez d'autres services)
+  # - job_name: 'dashboard'
+  #   static_configs:
+  #     - targets: ['host.docker.internal:5000']
+  #       labels:
+  #         instance: 'dashboard-web'
+  #         component: 'dashboard'

@@ -1,0 +1,187 @@
+================================================================================
+CONFIGURATION ASTERISK POUR VOICEBOT SAV WOUIPPLEUL
+================================================================================
+
+⚠️  ARCHITECTURE DISTRIBUÉE ⚠️
+
+Ce fichier décrit la configuration à appliquer sur votre SERVEUR ASTERISK DISTANT.
+Le serveur Python (Intelligence Artificielle) est installé sur un serveur séparé.
+
+================================================================================
+
+Fichier: /etc/asterisk/extensions.conf
+Contexte: [voicebot]
+
+Instructions:
+1. Éditer le fichier de configuration Asterisk sur votre serveur Asterisk
+2. Ajouter le contexte ci-dessous
+3. Remplacer <IP_DU_SERVEUR_IA> par l'adresse IP réelle du serveur Python
+4. Recharger la configuration: asterisk -rx "dialplan reload"
+
+================================================================================
+
+[voicebot]
+; Extension 777 pour tester le voicebot
+exten => 777,1,Answer()
+    same => n,Verbose(1, "Call to Voicebot SAV Wouippleul from ${CALLERID(num)}")
+    ; IMPORTANT: Sauvegarder le CALLERID dans une variable globale pour récupération via AMI
+    same => n,Set(GLOBAL(CALLER_${UNIQUEID})=${CALLERID(num)})
+    ; AudioSocket avec uniquement l'UNIQUEID (UUID strict requis par le module C)
+    same => n,AudioSocket(${UNIQUEID},<IP_DU_SERVEUR_IA>:9090)
+    same => n,Verbose(1, "AudioSocket session ended")
+    same => n,Hangup()
+
+; Extension de test (optionnel)
+exten => 778,1,Answer()
+    same => n,Playback(hello-world)
+    same => n,Hangup()
+
+================================================================================
+
+Explications:
+
+- Extension 777:
+  Lorsqu'on compose le 777, Asterisk répond à l'appel et le connecte
+  immédiatement au serveur Python via AudioSocket
+
+- Set(GLOBAL(CALLER_${UNIQUEID})=${CALLERID(num)}):
+  Sauvegarde le numéro de téléphone dans une variable globale Asterisk.
+  Cette variable sera récupérée par le serveur Python via AMI (Asterisk Manager Interface).
+  ⚠️  CRITIQUE: Cette ligne DOIT être présente AVANT AudioSocket
+
+- AudioSocket(identifier, host:port):
+  * identifier: ${UNIQUEID} UNIQUEMENT (UUID strict requis par le module C d'Asterisk)
+    - Le module AudioSocket C refuse les formats avec underscore
+    - Exemple d'UNIQUEID valide: "1763568391.4"
+  * host: Adresse IP du serveur Python distant (ex: 192.168.1.100)
+    ⚠️  IMPORTANT: Remplacer <IP_DU_SERVEUR_IA> par l'adresse IP réelle
+                   du serveur où vous avez installé PY_SAV (serveur IA)
+  * port: 9090 (défini dans config.py)
+
+  IMPORTANT: Le numéro de téléphone est récupéré via AMI depuis la variable globale
+  CALLER_${UNIQUEID}, ce qui évite les erreurs de parsing UUID du module C AudioSocket
+
+- Format audio:
+  AudioSocket utilise automatiquement le format SLIN (Signed Linear PCM)
+  à 8kHz, 16-bit, Mono - exactement ce que notre serveur Python attend
+
+================================================================================
+
+CONFIGURATION AMI REQUISE:
+
+Pour que le serveur Python puisse récupérer le numéro de téléphone via AMI,
+vous devez configurer l'accès AMI sur votre serveur Asterisk:
+
+Fichier: /etc/asterisk/manager.conf
+
+[general]
+enabled = yes
+port = 5038
+bindaddr = 0.0.0.0
+
+[voicebot-ami]
+secret = <VOTRE_MOT_DE_PASSE_AMI>
+deny=0.0.0.0/0.0.0.0
+permit=<IP_DU_SERVEUR_IA>/255.255.255.255
+read = system,call,log,verbose,command,agent,user,config
+write = system,call,log,verbose,command,agent,user,config
+
+Puis recharger la configuration AMI:
+  asterisk -rx "manager reload"
+
+⚠️  SÉCURITÉ: Configurez les variables AMI dans le fichier .env du serveur Python:
+  AMI_HOST=<IP_DU_SERVEUR_ASTERISK>
+  AMI_PORT=5038
+  AMI_USERNAME=voicebot-ami
+  AMI_SECRET=<VOTRE_MOT_DE_PASSE_AMI>
+
+================================================================================
+
+VÉRIFICATION DE LA CONFIGURATION:
+
+1. Vérifier qu'AudioSocket est chargé:
+   asterisk -rx "module show like audiosocket"
+
+   Résultat attendu:
+   app_audiosocket.so          Transmit and receive audio between..
+
+2. Si le module n'est pas chargé:
+   asterisk -rx "module load app_audiosocket"
+
+3. Tester la configuration dialplan:
+   asterisk -rx "dialplan show voicebot"
+
+================================================================================
+
+CONFIGURATION SIP (Optionnel - pour téléphones SIP):
+
+Fichier: /etc/asterisk/pjsip.conf
+
+[transport-udp]
+type=transport
+protocol=udp
+bind=0.0.0.0
+
+[6001]
+type=endpoint
+context=voicebot
+disallow=all
+allow=ulaw
+auth=6001
+aors=6001
+
+[6001]
+type=auth
+auth_type=userpass
+password=secret123
+username=6001
+
+[6001]
+type=aor
+max_contacts=1
+
+================================================================================
+
+COMMANDES ASTERISK UTILES:
+
+Voir les appels en cours:
+  asterisk -rx "core show channels"
+
+Voir les logs en temps réel:
+  asterisk -rx "core set verbose 5"
+  tail -f /var/log/asterisk/full
+
+Recharger la configuration:
+  asterisk -rx "dialplan reload"
+  asterisk -rx "pjsip reload"
+
+Redémarrer Asterisk:
+  systemctl restart asterisk
+
+================================================================================
+
+TEST RAPIDE:
+
+1. Démarrer le serveur Python:
+   python server.py
+
+2. Depuis un téléphone SIP connecté à Asterisk, composer:
+   777
+
+3. Vous devriez entendre:
+   "Bonjour, bienvenue au SAV Wouippleul. Comment puis-je vous aider ?"
+
+================================================================================
+
+DÉPANNAGE:
+
+Problème: "No such application 'AudioSocket'"
+Solution: Installer/activer le module app_audiosocket
+
+Problème: "Unable to connect to localhost:9090"
+Solution: Vérifier que server.py est en cours d'exécution
+
+Problème: "No audio"
+Solution: Vérifier les codecs (ulaw/alaw) et le format audio
+
+================================================================================

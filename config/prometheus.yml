@@ -1,0 +1,14 @@
+# Configuration Prometheus pour Voicebot PY_SAV
+# Généré automatiquement par setup.sh
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'voicebot'
+    static_configs:
+      - targets: ['145.239.223.188:9091']
+        labels:
+          instance: 'voicebot-server'
+          environment: 'production'
