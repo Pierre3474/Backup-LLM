@@ -26,13 +26,6 @@ asyncpg==0.29.0
 # Asterisk AMI (pour récupération CALLERID via variables de canal)
 panoramisk==1.4
 
-# Web Dashboard
-quart==0.19.4
-jinja2==3.1.3
-
-# Monitoring & Metrics
-prometheus-client==0.20.0
-
 # YAML Configuration 
 PyYAML>=6.0
 

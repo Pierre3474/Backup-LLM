@@ -31,9 +31,6 @@ from elevenlabs import VoiceSettings
 # Asterisk AMI
 from panoramisk import Manager as AMIManager
 
-# Prometheus monitoring
-from prometheus_client import Counter, Histogram, Gauge, start_http_server, Info
-
 # Local imports
 import config
 from audio_utils import generate_silence, stream_and_convert_to_8khz
@@ -71,98 +68,6 @@ def clean_email_text(text: str) -> str:
     # Extraction regex stricte pour valider
     match = re.search(r'[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}', cleaned)
     return match.group(0) if match else text
-
-
-# === Prometheus Metrics ===
-# Info
-VOICEBOT_INFO = Info('voicebot', 'Voicebot SAV Wouippleul Information')
-VOICEBOT_INFO.info({
-    'version': '2.0',
-    'service': 'SAV Wouippleul',
-    'role': 'Secrétaire AI'
-})
-
-# Counters
-CALLS_TOTAL = Counter(
-    'voicebot_calls_total',
-    'Total number of calls received',
-    ['status']  # resolved, transferred, failed, rejected
-)
-
-CALLS_BY_PROBLEM_TYPE = Counter(
-    'voicebot_calls_by_problem_type',
-    'Calls by problem type',
-    ['problem_type']  # internet, mobile, unknown
-)
-
-CALLS_BY_SENTIMENT = Counter(
-    'voicebot_calls_by_sentiment',
-    'Calls by detected sentiment',
-    ['sentiment']  # positive, neutral, negative
-)
-
-CALLS_BY_TAG = Counter(
-    'voicebot_calls_by_tag',
-    'Calls by classification tag',
-    ['tag', 'severity']  # tag: FIBRE_SYNCHRO, MOBILE_RESEAU, etc. | severity: LOW, MEDIUM, HIGH
-)
-
-CALLS_OUTSIDE_HOURS = Counter(
-    'voicebot_calls_outside_business_hours',
-    'Calls received outside business hours'
-)
-
-CACHE_HITS = Counter(
-    'voicebot_cache_hits_total',
-    'Number of cache hits',
-    ['cache_type']  # audio, dynamic_solution
-)
-
-CACHE_MISSES = Counter(
-    'voicebot_cache_misses_total',
-    'Number of cache misses',
-    ['cache_type']
-)
-
-DEEPGRAM_ERRORS = Counter(
-    'voicebot_deepgram_errors_total',
-    'Number of Deepgram STT errors'
-)
-
-GROQ_ERRORS = Counter(
-    'voicebot_groq_errors_total',
-    'Number of Groq LLM errors'
-)
-
-ELEVENLABS_TTS_ERRORS = Counter(
-    'voicebot_elevenlabs_tts_errors_total',
-    'Number of ElevenLabs TTS errors'
-)
-
-# Gauges
-ACTIVE_CALLS = Gauge(
-    'voicebot_active_calls',
-    'Number of currently active calls'
-)
-
-DEEPGRAM_AUDIO_QUALITY = Gauge(
-    'voicebot_deepgram_audio_quality',
-    'Deepgram audio quality score (0-100)',
-    ['call_id']
-)
-
-# Histograms
-CALL_DURATION = Histogram(
-    'voicebot_call_duration_seconds',
-    'Call duration in seconds',
-    buckets=[10, 30, 60, 120, 180, 300, 600]  # 10s à 10min
-)
-
-API_LATENCY = Histogram(
-    'voicebot_api_latency_seconds',
-    'API call latency in seconds',
-    ['api']  # deepgram, groq, elevenlabs_tts
-)
 
 
 # === États de la conversation ===
@@ -231,11 +136,9 @@ class AudioCache:
         text_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
 
         if text_hash in self.dynamic_cache:
-            CACHE_HITS.labels(cache_type='dynamic_solution').inc()
             logger.info(f"✓ Dynamic cache HIT: {text[:50]}...")
             return self.dynamic_cache[text_hash]
 
-        CACHE_MISSES.labels(cache_type='dynamic_solution').inc()
         return None
 
     def set_dynamic(self, text: str, audio_data: bytes):
@@ -548,20 +451,16 @@ class CallHandler:
         """Point d'entrée principal pour gérer un appel"""
         try:
             logger.info(f"[{self.call_id}] Call started")
-            ACTIVE_CALLS.inc()  # Incrémenter appels actifs
 
             # VÉRIFICATION HORAIRES D'OUVERTURE
             if not is_business_hours():
                 logger.warning(f"[{self.call_id}] Call outside business hours")
-                CALLS_OUTSIDE_HOURS.inc()  # Métrique Prometheus
 
                 # Jouer message fermé
                 await self._say("closed_hours")
                 await asyncio.sleep(3)  # Laisser le message finir
                 self.is_active = False
 
-                # Enregistrer le call rejeté
-                CALLS_TOTAL.labels(status='rejected').inc()
                 return
 
             # RÉCUPÉRATION DU NUMÉRO DE TÉLÉPHONE VIA AMI (si absent du handshake)
@@ -616,7 +515,6 @@ class CallHandler:
             logger.error(f"[{self.call_id}] Call error: {e}", exc_info=True)
 
         finally:
-            ACTIVE_CALLS.dec()  # Décrémenter appels actifs
             await self._cleanup()
 
     async def _audio_input_handler(self):
@@ -792,17 +690,6 @@ class CallHandler:
                             # Continuer le traitement normal
                             await self._process_user_input(sentence)
 
-                    # MONITORING QUALITÉ AUDIO (si disponible)
-                    # Deepgram peut fournir un score de confiance
-                    if hasattr(result.channel.alternatives[0], 'confidence'):
-                        confidence = result.channel.alternatives[0].confidence
-                        audio_quality = confidence * 100  # Convertir en pourcentage
-
-                        DEEPGRAM_AUDIO_QUALITY.labels(call_id=self.call_id).set(audio_quality)
-
-                        if audio_quality < 50:
-                            logger.warning(f"[{self.call_id}] Low audio quality detected: {audio_quality}%")
-
                 except Exception as e:
                     logger.error(f"Deepgram message error: {e}")
 
@@ -813,7 +700,6 @@ class CallHandler:
 
             async def on_error(conn, error, **kwargs):
                 logger.error(f"Deepgram error: {error}")
-                DEEPGRAM_ERRORS.inc()
 
             # Enregistrer les handlers
             self.deepgram_connection.on(LiveTranscriptionEvents.Transcript, on_message)
@@ -1028,7 +914,10 @@ class CallHandler:
 
             elif self.state == ConversationState.IDENTIFICATION:
                 # Extraire les infos et passer au diagnostic
-                self.context['user_info'] = user_text
+                cleaned_email = clean_email_text(user_text)
+                self.context['user_info'] = cleaned_email
+                if "@" in cleaned_email:
+                    self.context['email'] = cleaned_email
                 response = await self._ask_llm(
                     user_text,
                     system_prompt=construct_system_prompt(client_info, client_history)
@@ -1110,15 +999,10 @@ class CallHandler:
                 timeout=config.API_TIMEOUT
             )
 
-            # Mesurer latence API
-            api_latency = time.time() - start_time
-            API_LATENCY.labels(api='groq').observe(api_latency)
-
             return response.choices[0].message.content.strip()
 
         except Exception as e:
             logger.error(f"[{self.call_id}] Groq API error: {e}")
-            GROQ_ERRORS.inc()
             return "Je suis désolé, pouvez-vous répéter ?"
 
     async def _analyze_sentiment_llm(self, conversation_summary: str) -> str:
@@ -1206,11 +1090,7 @@ class CallHandler:
 
             if not audio_data:
                 logger.warning(f"[{self.call_id}] Cache miss: {phrase_key}")
-                CACHE_MISSES.labels(cache_type='audio').inc()
                 return
-
-            # Cache HIT
-            CACHE_HITS.labels(cache_type='audio').inc()
 
             # Envoyer directement à la queue de sortie (déjà en 8kHz)
             self.is_speaking = True
@@ -1316,9 +1196,6 @@ class CallHandler:
             # SAUVEGARDER LE TICKET DANS LA BASE DE DONNÉES
             call_duration = int(time.time() - self.call_start_time)
 
-            # Enregistrer la durée dans Prometheus
-            CALL_DURATION.observe(call_duration)
-
             # Générer un résumé de la conversation via LLM
             summary = "Appel traité par le voicebot."
             classification = {'tag': 'UNKNOWN', 'severity': 'MEDIUM'}
@@ -1359,12 +1236,6 @@ class CallHandler:
 
             # ANALYSE DE SENTIMENT VIA LLM (amélioration)
             sentiment = await self._analyze_sentiment_llm(summary)
-
-            # Enregistrer les métriques Prometheus
-            CALLS_TOTAL.labels(status=status).inc()
-            CALLS_BY_PROBLEM_TYPE.labels(problem_type=self.context.get('problem_type', 'unknown')).inc()
-            CALLS_BY_SENTIMENT.labels(sentiment=sentiment).inc()
-            CALLS_BY_TAG.labels(tag=classification['tag'], severity=classification['severity']).inc()
 
             # Préparer les données du ticket
             ticket_data = {
@@ -1536,15 +1407,6 @@ async def main():
     if not all([config.DEEPGRAM_API_KEY, config.GROQ_API_KEY, config.ELEVENLABS_API_KEY]):
         logger.error("❌ Missing API keys in .env file")
         sys.exit(1)
-
-    # DÉMARRER LE SERVEUR PROMETHEUS METRICS
-    try:
-        start_http_server(config.PROMETHEUS_PORT)
-        logger.info(f"✓ Prometheus metrics server started on port {config.PROMETHEUS_PORT}")
-        logger.info(f"  Metrics endpoint: http://0.0.0.0:{config.PROMETHEUS_PORT}/metrics")
-    except Exception as e:
-        logger.error(f"❌ Failed to start Prometheus metrics server: {e}")
-        logger.warning("⚠️  Continuing without Prometheus metrics")
 
     # INITIALISER LES POOLS DE BASE DE DONNÉES
     try:
