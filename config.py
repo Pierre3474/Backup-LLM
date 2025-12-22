@@ -59,9 +59,18 @@ AMI_PORT = int(os.getenv("AMI_PORT", 5038))
 AMI_USERNAME = os.getenv("AMI_USERNAME", "admin")
 AMI_SECRET = os.getenv("AMI_SECRET", "admin")
 
-# === Business Hours ===
-BUSINESS_HOURS_START = 8   # 8h00
-BUSINESS_HOURS_END = 19    # 19h00
+# === Horaires d'ouverture précis ===
+# Format : Jour (0=Lundi, 4=Vendredi) : [(Heure_Debut, Heure_Fin), (Heure_Debut, Heure_Fin)]
+# Note: Les heures sont exclusives pour la fin (12 signifie jusqu'à 11h59)
+BUSINESS_SCHEDULE = {
+    0: [(9, 12), (14, 18)],  # Lundi
+    1: [(9, 12), (14, 18)],  # Mardi
+    2: [(9, 12), (14, 18)],  # Mercredi
+    3: [(9, 12), (14, 18)],  # Jeudi
+    4: [(9, 12), (14, 17)],  # Vendredi
+    # 5: Samedi (Fermé - absent de la liste)
+    # 6: Dimanche (Fermé)
+}
 
 # === Phrases pré-cachées (8kHz) ===
 CACHED_PHRASES = {

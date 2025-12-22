@@ -331,15 +331,24 @@ def construct_system_prompt(client_info: Dict = None, client_history: list = Non
 
 def is_business_hours() -> bool:
     """
-    Vérifie si on est dans les horaires d'ouverture
-
-    Returns:
-        True si ouvert, False sinon
+    Vérifie si on est dans les plages horaires précises (Lundi-Jeudi 9-12/14-18, Ven 9-12/14-17)
     """
     now = datetime.now()
+    current_day = now.weekday()  # 0=Lundi, ..., 6=Dimanche
     current_hour = now.hour
+    # Si le jour n'est pas dans le planning (ex: Samedi/Dimanche), c'est fermé
+    if current_day not in config.BUSINESS_SCHEDULE:
+        return False
 
-    return config.BUSINESS_HOURS_START <= current_hour < config.BUSINESS_HOURS_END
+    # Récupérer les plages du jour (ex: [(9, 12), (14, 18)])
+    ranges = config.BUSINESS_SCHEDULE[current_day]
+
+    # Vérifier si l'heure actuelle tombe dans l'une des plages
+    for start_h, end_h in ranges:
+        if start_h <= current_hour < end_h:
+            return True
+
+    return False
 
 
 # === Call Handler ===
