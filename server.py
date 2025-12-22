@@ -12,7 +12,6 @@ import sys
 import os
 import struct
 import time
-import random
 import hashlib
 from pathlib import Path
 from datetime import datetime
@@ -20,6 +19,7 @@ from typing import Optional, Dict, List
 from concurrent.futures import ProcessPoolExecutor
 from collections import deque
 from enum import Enum
+import yaml
 
 # AI APIs
 from deepgram import DeepgramClient, LiveTranscriptionEvents, LiveOptions
@@ -239,19 +239,42 @@ class AudioCache:
         }
 
 
+PROMPTS_CONFIG = None
+
+
+def _load_prompts_config() -> Dict:
+    """Charge le fichier de prompts externe pour permettre la modification à chaud."""
+    global PROMPTS_CONFIG
+
+    if PROMPTS_CONFIG is not None:
+        return PROMPTS_CONFIG
+
+    default_path = Path(__file__).resolve().parent / "prompts.yaml"
+    prompts_path = getattr(config, "PROMPTS_PATH", default_path)
+
+    try:
+        with open(prompts_path, "r", encoding="utf-8") as f:
+            PROMPTS_CONFIG = yaml.safe_load(f) or {}
+            logger.info(f"Prompts loaded from {prompts_path}")
+    except FileNotFoundError:
+        logger.warning(f"Prompts file not found at {prompts_path}, using defaults")
+        PROMPTS_CONFIG = {}
+    except Exception as e:
+        logger.error(f"Failed to load prompts file {prompts_path}: {e}")
+        PROMPTS_CONFIG = {}
+
+    return PROMPTS_CONFIG
+
+
 # === Helper Functions ===
 def construct_system_prompt(client_info: Dict = None, client_history: list = None) -> str:
     """
     Construit le prompt système pour le LLM avec les règles métier (Rôle: Secrétaire AI)
-
-    Args:
-        client_info: Dict avec first_name, last_name, box_model (optionnel)
-        client_history: Liste de dicts avec l'historique des tickets (optionnel)
-
-    Returns:
-        Prompt système formaté
+    en s'appuyant sur un fichier externe (prompts.yaml) pour faciliter la maintenance.
     """
-    prompt = (
+    prompts_cfg = _load_prompts_config()
+
+    default_base_prompt = (
         "Tu es l'assistant vocal secrétaire du Service Après-Vente Wouippleul. "
         "Ton rôle est UNIQUEMENT de faire un DIAGNOSTIC DE PREMIER NIVEAU et d'ASSISTER le client, "
         "PAS de résoudre des problèmes complexes.\n\n"
@@ -261,17 +284,31 @@ def construct_system_prompt(client_info: Dict = None, client_history: list = Non
         "- INTERDIT : Function Calling, actions complexes, commandes système\n"
         "- Ton but : GUIDER le client pour qu'il fasse lui-même les manipulations simples\n"
         "- Si le problème est complexe : TRANSFERT au technicien immédiatement\n\n"
+        "PROCÉDURE DE DIAGNOSTIC :\n"
+        "1. Demande quel type de problème : 'Internet' ou 'Mobile' ?\n"
+        "2. Pour INTERNET :\n"
+        "   a) ⚠️ IMPÉRATIF SÉCURITÉ : AVANT toute manipulation de box, tu DOIS dire :\n"
+        "      'Attention, si vous appelez d'une ligne fixe, redémarrer la box coupera l'appel. "
+        "Êtes-vous sur mobile ?'\n"
+        "   b) Si OUI mobile : Guide le client pour redémarrer la box (débrancher 10 sec)\n"
+        "   c) Si NON fixe : Propose de rappeler depuis un mobile OU transfert technicien\n"
+        "3. Pour MOBILE : Propose simplement de redémarrer le téléphone\n"
+        "4. Après manipulation : Demande si ça fonctionne maintenant\n"
+        "5. Si échec ou problème complexe : Transfert immédiat au technicien\n\n"
+        "PRÉVENTION : Le client fait les actions, toi tu GUIDES uniquement."
     )
+
+    prompt = prompts_cfg.get("system_prompt_base", default_base_prompt)
 
     if client_info:
         prompt += (
-            f"CLIENT RECONNU : {client_info.get('first_name')} {client_info.get('last_name')} "
-            f"(Équipement: {client_info.get('box_model')}).\n\n"
+            f"\n\nCLIENT RECONNU : {client_info.get('first_name')} {client_info.get('last_name')} "
+            f"(Équipement: {client_info.get('box_model')})."
         )
 
     # MÉMOIRE LONG TERME : Injecter l'historique des tickets
     if client_history and len(client_history) > 0:
-        prompt += "HISTORIQUE CLIENT (MÉMOIRE LONG TERME) :\n"
+        prompt += "\n\nHISTORIQUE CLIENT (MÉMOIRE LONG TERME) :\n"
 
         # Compter les appels récents et problèmes non résolus
         recent_calls_count = len(client_history)
@@ -287,22 +324,7 @@ def construct_system_prompt(client_info: Dict = None, client_history: list = Non
                 problem_type_fr = "Internet" if last_unresolved['problem_type'] == "internet" else "Mobile"
                 prompt += f"- Dernier problème non résolu: {problem_type_fr} - {last_unresolved.get('summary', 'N/A')}\n"
 
-        prompt += "\nADAPTE TON APPROCHE en fonction de cet historique. Si le client a des problèmes récurrents, sois plus empathique et considère un transfert technicien plus rapidement.\n\n"
-
-    prompt += (
-        "PROCÉDURE DE DIAGNOSTIC :\n"
-        "1. Demande quel type de problème : 'Internet' ou 'Mobile' ?\n"
-        "2. Pour INTERNET :\n"
-        "   a) ⚠️ IMPÉRATIF SÉCURITÉ : AVANT toute manipulation de box, tu DOIS dire :\n"
-        "      'Attention, si vous appelez d'une ligne fixe, redémarrer la box coupera l'appel. "
-        "Êtes-vous sur mobile ?'\n"
-        "   b) Si OUI mobile : Guide le client pour redémarrer la box (débrancher 10 sec)\n"
-        "   c) Si NON fixe : Propose de rappeler depuis un mobile OU transfert technicien\n"
-        "3. Pour MOBILE : Propose simplement de redémarrer le téléphone\n"
-        "4. Après manipulation : Demande si ça fonctionne maintenant\n"
-        "5. Si échec ou problème complexe : Transfert immédiat au technicien\n\n"
-        "PRÉVENTION : Le client fait les actions, toi tu GUIDES uniquement."
-    )
+        prompt += "\nADAPTE TON APPROCHE en fonction de cet historique. Si le client a des problèmes récurrents, sois plus empathique et considère un transfert technicien plus rapidement.\n"
 
     return prompt
 
@@ -1233,15 +1255,24 @@ class CallHandler:
         self.is_speaking = False
 
     async def _check_technician(self) -> bool:
-        """Vérifie si un technicien est disponible (simulation)"""
-        # Simulation asynchrone
-        await asyncio.sleep(0.5)
+        """Vérifie si un technicien est disponible via la charge réelle des tickets transférés."""
+        try:
+            # Fenêtre et seuil par défaut (peut être surchargé via config)
+            window_minutes = getattr(config, "TECHNICIAN_LOAD_WINDOW_MIN", 10)
+            max_active = getattr(config, "TECHNICIAN_MAX_ACTIVE_TRANSFERS", 5)
 
-        # 80% de chance qu'un technicien soit dispo
-        is_available = random.choices([True, False], weights=[0.8, 0.2])[0]
+            is_available = await db_utils.is_technician_available(
+                max_active=max_active,
+                window_minutes=window_minutes
+            )
 
-        logger.info(f"[{self.call_id}] Technician available: {is_available}")
-        return is_available
+            logger.info(f"[{self.call_id}] Technician availability (window {window_minutes}m, max {max_active}): {is_available}")
+            return is_available
+
+        except Exception as e:
+            logger.error(f"[{self.call_id}] Technician availability check failed: {e}")
+            # Fail-open: on préfère tenter le transfert plutôt que de bloquer
+            return True
 
     async def _cleanup(self):
         """Nettoyage des ressources + sauvegarde ticket avec analyse LLM"""

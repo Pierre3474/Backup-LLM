@@ -134,3 +134,11 @@ ELEVENLABS_USE_SPEAKER_BOOST = True  # Amélioration du locuteur
 
 # === Logging ===
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+# Gestion de la charge techniciens
+# Nombre max de transferts acceptés dans la fenêtre de temps
+TECHNICIAN_MAX_ACTIVE_TRANSFERS = int(os.getenv("TECHNICIAN_MAX_ACTIVE_TRANSFERS", "5"))
+# Fenêtre de temps en minutes pour calculer la charge
+TECHNICIAN_LOAD_WINDOW_MIN = int(os.getenv("TECHNICIAN_LOAD_WINDOW_MIN", "10"))
+# Chemin vers le fichier de prompts
+PROMPTS_PATH = os.getenv("PROMPTS_PATH", "prompts.yaml")

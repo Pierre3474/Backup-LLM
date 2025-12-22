@@ -5,7 +5,7 @@ Gestion asynchrone des clients et tickets
 import asyncpg
 import logging
 from typing import Optional, Dict
-from datetime import datetime
+from datetime import datetime, timedelta
 import config
 
 logger = logging.getLogger(__name__)
@@ -227,6 +227,41 @@ async def get_recent_tickets(limit: int = 10) -> list:
     if not _tickets_pool:
         logger.error("Tickets pool not initialized")
         return []
+
+
+async def is_technician_available(max_active: int = 5, window_minutes: int = 10) -> bool:
+    """
+    Vérifie la disponibilité des techniciens en fonction des tickets transférés récemment.
+
+    Args:
+        max_active: Nombre maximum de tickets transférés considérés comme acceptables.
+        window_minutes: Fenêtre glissante en minutes pour mesurer la charge récente.
+
+    Returns:
+        True si la charge est inférieure au seuil, False sinon.
+    """
+    if not _tickets_pool:
+        logger.error("Tickets pool not initialized")
+        return True  # fail-open pour éviter de bloquer le transfert
+
+    try:
+        since_ts = datetime.now() - timedelta(minutes=window_minutes)
+        async with _tickets_pool.acquire() as conn:
+            active_transfers = await conn.fetchval(
+                """
+                SELECT COUNT(*) FROM tickets
+                WHERE status = 'transferred'
+                  AND created_at >= $1
+                """,
+                since_ts
+            )
+
+        logger.info(f"Technician load (last {window_minutes}m): {active_transfers}/{max_active}")
+        return active_transfers < max_active
+
+    except Exception as e:
+        logger.error(f"Error checking technician availability: {e}")
+        return True  # fail-open pour ne pas bloquer la prise en charge
 
     try:
         async with _tickets_pool.acquire() as conn:

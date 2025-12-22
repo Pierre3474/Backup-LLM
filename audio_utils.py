@@ -75,7 +75,14 @@ def stream_and_convert_to_8khz(audio_stream_iterator):
         "pipe:1"              # Sortie : vers Python
     ]
 
-    process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=4096)
+    try:
+        process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=4096)
+    except FileNotFoundError:
+        logger.error("FFmpeg not installed or not found in PATH")
+        return
+    except Exception as e:
+        logger.error(f"Failed to start FFmpeg process: {e}")
+        return
 
     # 2. Thread pour nourrir FFmpeg avec le MP3
     def writer():
@@ -85,7 +92,7 @@ def stream_and_convert_to_8khz(audio_stream_iterator):
                     process.stdin.write(chunk)
                     process.stdin.flush()
         except Exception as e:
-            print(f"Error writing to ffmpeg: {e}")
+            logger.error(f"FFmpeg writing error: {e}")
         finally:
             process.stdin.close()
 

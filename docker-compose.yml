@@ -108,6 +108,21 @@ services:
       - postgres-clients
       - postgres-tickets
 
+# Voicebot (application)
+  voicebot:
+    build: .
+    container_name: voicebot-app
+    restart: unless-stopped
+    depends_on:
+      - postgres-clients
+      - postgres-tickets
+    networks:
+      - voicebot-network
+    volumes:
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      - ./prompts.yaml:/app/prompts.yaml  # Externalise le prompt pour modification à chaud
+
 # Réseaux
 networks:
   voicebot-network:
