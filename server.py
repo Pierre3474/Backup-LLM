@@ -657,7 +657,7 @@ class CallHandler:
                 interim_results=True,
                 punctuate=True,
                 vad_events=True,
-                endpointing=3000  # Attendre 1.5s de silence avant de finaliser
+                endpointing=500  # Attendre 0.5s de silence avant de finaliser (réactivité maximale)
             )
 
             # Créer la connexion (API Deepgram 3.7+)
