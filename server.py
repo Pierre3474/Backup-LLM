@@ -35,7 +35,7 @@ from prometheus_client import Counter, Histogram, Gauge, start_http_server, Info
 
 # Local imports
 import config
-from audio_utils import convert_24khz_to_8khz, generate_silence
+from audio_utils import generate_silence, stream_and_convert_to_8khz
 import db_utils
 
 # Configure logging
@@ -1163,104 +1163,53 @@ class CallHandler:
             logger.error(f"[{self.call_id}] Error saying '{phrase_key}': {e}")
 
     async def _say_dynamic(self, text: str):
-        """Génère et dit un texte dynamique via ElevenLabs TTS (avec cache dynamique)"""
+        """Version Optimisée : Streaming Temps Réel + Modèle Turbo"""
         try:
             self.is_speaking = True
 
-            # VÉRIFIER LE CACHE DYNAMIQUE D'ABORD
+            # 1. Cache Check
             cached_audio = self.audio_cache.get_dynamic(text)
-
             if cached_audio:
-                # Utiliser l'audio en cache (économie de coût + latence)
-                logger.info(f"[{self.call_id}] Using cached dynamic audio")
+                logger.info(f"[{self.call_id}] Cache HIT dynamic")
                 await self._send_audio(cached_audio)
                 self.is_speaking = False
                 return
 
-            # Pas en cache, générer via ElevenLabs TTS
-            start_time = time.time()
-
-            # CRITIQUE: Envoyer du silence pendant la génération TTS pour garder AudioSocket vivant
-            silence_task_active = [True]  # Liste pour éviter problème de portée
-            async def send_comfort_silence():
-                """Envoie du silence toutes les 500ms pendant la génération TTS"""
-                try:
-                    while silence_task_active[0]:
-                        silence_chunk = generate_silence(duration_ms=500)
-                        await self._send_audio(silence_chunk)
-                        await asyncio.sleep(0.5)
-                except Exception as e:
-                    logger.error(f"[{self.call_id}] Comfort silence error: {e}")
-
-            # Démarrer la tâche de silence en arrière-plan
-            silence_task = asyncio.create_task(send_comfort_silence())
-
-            try:
-                # Générer le TTS (peut prendre plusieurs secondes)
-                # IMPORTANT: Utiliser run_in_executor pour ne pas bloquer l'event loop
-                loop = asyncio.get_event_loop()
-
-                def generate_tts():
-                    # Générer l'audio avec ElevenLabs
-                    audio_generator = self.elevenlabs_client.text_to_speech.convert(
-                        voice_id=config.ELEVENLABS_VOICE_ID,
-                        optimize_streaming_latency=0,
-                        output_format="mp3_44100_128",
-                        text=text,
-                        model_id=config.ELEVENLABS_MODEL,
-                        voice_settings=VoiceSettings(
-                            stability=config.ELEVENLABS_STABILITY,
-                            similarity_boost=config.ELEVENLABS_SIMILARITY_BOOST,
-                            style=config.ELEVENLABS_STYLE,
-                            use_speaker_boost=config.ELEVENLABS_USE_SPEAKER_BOOST
-                        )
-                    )
-
-                    # Collecter tous les chunks audio
-                    audio_bytes = b""
-                    for chunk in audio_generator:
-                        if chunk:
-                            audio_bytes += chunk
-
-                    return audio_bytes
-
-                audio_mp3 = await loop.run_in_executor(None, generate_tts)
-            finally:
-                # Arrêter la tâche de silence
-                silence_task_active[0] = False
-                silence_task.cancel()
-                try:
-                    await silence_task
-                except asyncio.CancelledError:
-                    pass
-
-            # Mesurer latence API
-            api_latency = time.time() - start_time
-            API_LATENCY.labels(api='elevenlabs_tts').observe(api_latency)
-
-            # Convertir MP3 -> 8kHz dans le ProcessPool (CPU-bound)
-            loop = asyncio.get_event_loop()
-            audio_8khz = await loop.run_in_executor(
-                self.process_pool,
-                convert_24khz_to_8khz,
-                audio_mp3,
-                "mp3"
+            # 2. Streaming Generation (Turbo v2.5)
+            logger.info(f"[{self.call_id}] Streaming TTS generation...")
+            
+            audio_stream_iterator = self.elevenlabs_client.generate(
+                text=text,
+                voice=config.ELEVENLABS_VOICE_ID,
+                model="eleven_turbo_v2_5", # Moins cher et plus rapide
+                stream=True,
+                output_format="mp3_44100_128",
+                latency=1
             )
+            
+            # 3. Conversion à la volée (Pipe)
+            pcm_stream = stream_and_convert_to_8khz(audio_stream_iterator)
 
-            # STOCKER DANS LE CACHE DYNAMIQUE pour réutilisation future
-            self.audio_cache.set_dynamic(text, audio_8khz)
+            # 4. Envoi immédiat à Asterisk
+            full_audio_for_cache = bytearray()
+            
+            for chunk in pcm_stream:
+                if not self.output_queue and not self.is_speaking: 
+                    break # Stop si interruption
+                    
+                self.output_queue.append(chunk)
+                full_audio_for_cache.extend(chunk)
 
-            # Envoyer à la queue de sortie
-            await self._send_audio(audio_8khz)
+            # 5. Mise en cache
+            if len(full_audio_for_cache) > 0:
+                self.audio_cache.set_dynamic(text, bytes(full_audio_for_cache))
+            
             self.is_speaking = False
 
         except Exception as e:
-            logger.error(f"[{self.call_id}] Error saying dynamic text: {e}")
-            ELEVENLABS_TTS_ERRORS.inc()
+            logger.error(f"[{self.call_id}] Error in streaming TTS: {e}")
             self.is_speaking = False
-
-            # Fallback: message d'erreur
-            await self._say("wait")
+            await self._say("error")
 
     async def _send_audio(self, audio_data: bytes):
         """Envoie de l'audio à la queue de sortie par chunks"""

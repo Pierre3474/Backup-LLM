@@ -3,6 +3,8 @@ Audio Utilities - Fonctions CPU-bound pour conversion audio
 Ces fonctions seront exécutées dans le ProcessPoolExecutor
 """
 import io
+import subprocess
+import threading
 from pydub import AudioSegment
 from pydub.effects import normalize
 import numpy as np
@@ -52,6 +54,54 @@ def convert_24khz_to_8khz(audio_data_24khz: bytes, input_format: str = "mp3") ->
         logger.error(f"Erreur conversion 24kHz->8kHz: {e}")
         # Retourner du silence en cas d'erreur (1 seconde)
         return b'\x00\x00' * 8000
+
+
+def stream_and_convert_to_8khz(audio_stream_iterator):
+    """
+    Convertit le flux MP3 d'ElevenLabs en PCM 8kHz à la volée via FFmpeg.
+    """
+    import subprocess
+    import threading
+
+    # 1. On lance FFmpeg en mode "Tube" (Pipe)
+    cmd = [
+        "ffmpeg",
+        "-i", "pipe:0",       # Entrée : le stream MP3
+        "-f", "s16le",        # Format de sortie : RAW PCM
+        "-acodec", "pcm_s16le",
+        "-ar", "8000",        # Force le 8kHz pour Asterisk
+        "-ac", "1",           # Mono
+        "-v", "quiet",        # Silence logs
+        "pipe:1"              # Sortie : vers Python
+    ]
+
+    process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=4096)
+
+    # 2. Thread pour nourrir FFmpeg avec le MP3
+    def writer():
+        try:
+            for chunk in audio_stream_iterator:
+                if chunk:
+                    process.stdin.write(chunk)
+                    process.stdin.flush()
+        except Exception as e:
+            print(f"Error writing to ffmpeg: {e}")
+        finally:
+            process.stdin.close()
+
+    writer_thread = threading.Thread(target=writer)
+    writer_thread.start()
+
+    # 3. Lecture de la sortie 8kHz
+    chunk_size = 320  # 20ms
+    while True:
+        data = process.stdout.read(chunk_size)
+        if not data:
+            break
+        yield data
+    
+    writer_thread.join()
+    process.wait()
 
 
 def convert_raw_to_mp3(
