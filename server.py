@@ -913,11 +913,18 @@ class CallHandler:
                 self.state = ConversationState.IDENTIFICATION
 
             elif self.state == ConversationState.IDENTIFICATION:
-                # Extraire les infos et passer au diagnostic
-                cleaned_email = clean_email_text(user_text)
-                self.context['user_info'] = cleaned_email
-                if "@" in cleaned_email:
-                    self.context['email'] = cleaned_email
+                # --- MODIFICATION START ---
+                # On tente de nettoyer le texte pour voir s'il contient un email
+                cleaned_info = clean_email_text(user_text)
+                
+                # Si le nettoyage a changé le texte (c'est donc probablement un email), on garde le propre
+                if cleaned_info != user_text and "@" in cleaned_info:
+                    logger.info(f"[{self.call_id}] Email detected and cleaned: {cleaned_info}")
+                    self.context['user_info'] = cleaned_info
+                else:
+                    self.context['user_info'] = user_text
+                # --- MODIFICATION END ---
+
                 response = await self._ask_llm(
                     user_text,
                     system_prompt=construct_system_prompt(client_info, client_history)
