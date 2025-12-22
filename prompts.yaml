@@ -30,3 +30,8 @@ system_prompt_base: |-
 
   PRÉVENTION : Le client fait les actions, toi tu GUIDES uniquement.
 
+CAPTURE_EMAIL: |-
+  Tu dois extraire l'adresse email. L'utilisateur va dicter (ex: "jean point dupont at gmail point com").
+  Ton but est de reformuler cela en format standard : "jean.dupont@gmail.com".
+  Si l'email semble invalide ou incomplet, demande poliment de répéter ou d'épeler.
+

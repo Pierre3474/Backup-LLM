@@ -38,3 +38,8 @@ PyYAML>=6.0
 
 # Note: FFmpeg doit être installé sur le système
 # sudo apt-get install ffmpeg
+
+# Dashboard & Supervision
+streamlit>=1.30.0
+pandas>=2.2.0
+psycopg2-binary>=2.9.9

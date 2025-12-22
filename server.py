@@ -4,6 +4,7 @@ Serveur AudioSocket Asyncio pour Voicebot SAV Wouippleul
 Architecture haute performance avec uvloop + ProcessPoolExecutor
 """
 import os
+import re
 import asyncio
 import uvloop
 import logging
@@ -44,6 +45,32 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+# === Utils ===
+def clean_email_text(text: str) -> str:
+    """Nettoie une transcription d'email (at->@, dot->., etc.)"""
+    if not text:
+        return ""
+
+    # Dictionnaire de remplacements phonétiques
+    replacements = {
+        r'\s+arobase\s+': '@',
+        r'\s+at\s+': '@',
+        r'\s+chez\s+': '@',
+        r'\s+point\s+': '.',
+        r'\s+dot\s+': '.',
+        r'\s+tiret\s+': '-',
+        r'\s+underscore\s+': '_',
+        r'\s+': ''  # Supprimer tous les espaces restants
+    }
+    cleaned = text.lower()
+    for pattern, repl in replacements.items():
+        cleaned = re.sub(pattern, repl, cleaned)
+
+    # Extraction regex stricte pour valider
+    match = re.search(r'[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}', cleaned)
+    return match.group(0) if match else text
 
 
 # === Prometheus Metrics ===

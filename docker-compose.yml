@@ -118,10 +118,27 @@ services:
       - postgres-tickets
     networks:
       - voicebot-network
+    environment:
+      - TZ=Europe/Paris
     volumes:
       - ./logs:/app/logs
       - ./cache:/app/cache
       - ./prompts.yaml:/app/prompts.yaml  # Externalise le prompt pour modification à chaud
+
+  dashboard:
+    build: .
+    container_name: voicebot-dashboard
+    command: streamlit run dashboard.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    env_file: .env
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+    depends_on:
+      - postgres-tickets
+    networks:
+      - voicebot-network
 
 # Réseaux
 networks:
