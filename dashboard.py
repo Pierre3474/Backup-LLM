@@ -158,3 +158,4 @@ if conn:
         conn.close()
 else:
     st.error("Impossible de se connecter à la base de données.")
+
