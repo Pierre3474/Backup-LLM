@@ -133,20 +133,53 @@ get_user_vars() {
         SERVER_HOST_IP=$DEFAULT_IP
     fi
 
-    # REMOTE_ASTERISK_IP
+    # REMOTE_ASTERISK_IP (support de plusieurs IPs)
+    echo ""
+    log_info "Configuration des serveurs Asterisk autorisés"
+    log_info "Vous pouvez autoriser plusieurs serveurs Asterisk (plusieurs clients)"
+    echo ""
+
+    ASTERISK_IPS=()
+    ASTERISK_IP_COUNT=0
+
     while true; do
-        read -p "$(echo -e ${BLUE}Entrez l\'adresse IP du serveur Asterisk distant:${NC} )" REMOTE_ASTERISK_IP
-        if [[ -n "$REMOTE_ASTERISK_IP" ]]; then
-            # Validation IP
-            if [[ $REMOTE_ASTERISK_IP =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-                break
-            else
-                log_warning "Format d'IP invalide"
-            fi
+        ASTERISK_IP_COUNT=$((ASTERISK_IP_COUNT + 1))
+
+        if [ $ASTERISK_IP_COUNT -eq 1 ]; then
+            prompt_msg="Entrez l'adresse IP du 1er serveur Asterisk"
         else
-            log_warning "L'adresse IP du serveur Asterisk ne peut pas être vide"
+            prompt_msg="Entrez l'IP du serveur Asterisk $ASTERISK_IP_COUNT (ou laissez vide pour terminer)"
+        fi
+
+        read -p "$(echo -e ${BLUE}$prompt_msg:${NC} )" ASTERISK_IP
+
+        # Si vide et au moins 1 IP déjà saisie, on termine
+        if [[ -z "$ASTERISK_IP" ]] && [ ${#ASTERISK_IPS[@]} -gt 0 ]; then
+            break
+        fi
+
+        # Si vide et aucune IP, on redemande
+        if [[ -z "$ASTERISK_IP" ]] && [ ${#ASTERISK_IPS[@]} -eq 0 ]; then
+            log_warning "Au moins 1 serveur Asterisk doit être configuré"
+            ASTERISK_IP_COUNT=$((ASTERISK_IP_COUNT - 1))
+            continue
+        fi
+
+        # Validation IP
+        if [[ $ASTERISK_IP =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+            ASTERISK_IPS+=("$ASTERISK_IP")
+            log_success "IP $ASTERISK_IP ajoutée (${#ASTERISK_IPS[@]} serveur(s) configuré(s))"
+        else
+            log_warning "Format d'IP invalide"
+            ASTERISK_IP_COUNT=$((ASTERISK_IP_COUNT - 1))
         fi
     done
+
+    # Garder la première IP comme REMOTE_ASTERISK_IP pour compatibilité
+    REMOTE_ASTERISK_IP="${ASTERISK_IPS[0]}"
+
+    echo ""
+    log_success "${#ASTERISK_IPS[@]} serveur(s) Asterisk configuré(s)"
 
     # AMI_USERNAME (pour récupération CALLERID via AMI)
     read -p "$(echo -e ${BLUE}Entrez le nom d\'utilisateur AMI Asterisk [voicebot-ami]:${NC} )" AMI_USERNAME
@@ -496,9 +529,23 @@ setup_docker_stack() {
 configure_firewall() {
     log_info "Configuration du firewall UFW..."
 
-    # Port 9090 pour AudioSocket (Asterisk uniquement)
-    log_info "Autorisation du port TCP 9090 depuis ${REMOTE_ASTERISK_IP}..."
-    ufw allow from ${REMOTE_ASTERISK_IP} to any port 9090 proto tcp comment 'AudioSocket depuis Asterisk distant'
+    # Port 9090 pour AudioSocket (tous les serveurs Asterisk autorisés)
+    log_info "Autorisation du port TCP 9090 pour ${#ASTERISK_IPS[@]} serveur(s) Asterisk..."
+
+    # Créer le fichier des IPs autorisées
+    ALLOWED_IPS_FILE="/opt/PY_SAV/.allowed_asterisk_ips"
+    > "$ALLOWED_IPS_FILE"  # Vider le fichier
+    chmod 600 "$ALLOWED_IPS_FILE"
+
+    local ip_count=0
+    for asterisk_ip in "${ASTERISK_IPS[@]}"; do
+        ip_count=$((ip_count + 1))
+        log_info "  [$ip_count/${#ASTERISK_IPS[@]}] Autorisation de $asterisk_ip..."
+        ufw allow from "$asterisk_ip" to any port 9090 proto tcp comment "AudioSocket Asterisk #$ip_count"
+
+        # Ajouter l'IP au fichier de configuration
+        echo "$asterisk_ip|Serveur Asterisk #$ip_count" >> "$ALLOWED_IPS_FILE"
+    done
 
     # Services d'administration (IP personnelle uniquement)
     log_info "Sécurisation des services d'administration depuis ${PERSONAL_IP}..."
@@ -509,7 +556,10 @@ configure_firewall() {
     ufw allow from ${PERSONAL_IP} to any port 5433 proto tcp comment 'PostgreSQL tickets - IP personnelle'
 
     log_success "Firewall configuré avec succès"
-    log_info "AudioSocket (9090): accessible depuis ${REMOTE_ASTERISK_IP}"
+    log_info "AudioSocket (9090): accessible depuis ${#ASTERISK_IPS[@]} serveur(s) Asterisk"
+    for asterisk_ip in "${ASTERISK_IPS[@]}"; do
+        log_info "  - $asterisk_ip"
+    done
     log_info "Services admin (Grafana, PgAdmin, Prometheus, PostgreSQL): accessible depuis ${PERSONAL_IP}"
 }
 
