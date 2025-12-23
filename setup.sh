@@ -547,20 +547,34 @@ configure_firewall() {
         echo "$asterisk_ip|Serveur Asterisk #$ip_count" >> "$ALLOWED_IPS_FILE"
     done
 
-    # Services d'administration (IP personnelle uniquement)
-    log_info "Sécurisation des services d'administration depuis ${PERSONAL_IP}..."
-    ufw allow from ${PERSONAL_IP} to any port 3000 proto tcp comment 'Grafana - IP personnelle'
-    ufw allow from ${PERSONAL_IP} to any port 5050 proto tcp comment 'PgAdmin - IP personnelle'
-    ufw allow from ${PERSONAL_IP} to any port 9091 proto tcp comment 'Prometheus Metrics - IP personnelle'
-    ufw allow from ${PERSONAL_IP} to any port 5432 proto tcp comment 'PostgreSQL clients - IP personnelle'
-    ufw allow from ${PERSONAL_IP} to any port 5433 proto tcp comment 'PostgreSQL tickets - IP personnelle'
+    # Convertir PERSONAL_IP en tableau (support multi-IP séparées par virgule)
+    IFS=',' read -ra PERSONAL_IPS <<< "$PERSONAL_IP"
+
+    # Services d'administration (IPs personnelles autorisées)
+    log_info "Sécurisation des services d'administration depuis ${#PERSONAL_IPS[@]} IP(s)..."
+
+    local personal_ip_count=0
+    for personal_ip in "${PERSONAL_IPS[@]}"; do
+        personal_ip_count=$((personal_ip_count + 1))
+        log_info "  [$personal_ip_count/${#PERSONAL_IPS[@]}] Autorisation de $personal_ip..."
+
+        ufw allow from "$personal_ip" to any port 3000 proto tcp comment "Grafana - IP admin #$personal_ip_count"
+        ufw allow from "$personal_ip" to any port 5050 proto tcp comment "PgAdmin - IP admin #$personal_ip_count"
+        ufw allow from "$personal_ip" to any port 8501 proto tcp comment "Dashboard - IP admin #$personal_ip_count"
+        ufw allow from "$personal_ip" to any port 9091 proto tcp comment "Prometheus - IP admin #$personal_ip_count"
+        ufw allow from "$personal_ip" to any port 5432 proto tcp comment "PostgreSQL clients - IP admin #$personal_ip_count"
+        ufw allow from "$personal_ip" to any port 5433 proto tcp comment "PostgreSQL tickets - IP admin #$personal_ip_count"
+    done
 
     log_success "Firewall configuré avec succès"
     log_info "AudioSocket (9090): accessible depuis ${#ASTERISK_IPS[@]} serveur(s) Asterisk"
     for asterisk_ip in "${ASTERISK_IPS[@]}"; do
         log_info "  - $asterisk_ip"
     done
-    log_info "Services admin (Grafana, PgAdmin, Prometheus, PostgreSQL): accessible depuis ${PERSONAL_IP}"
+    log_info "Services admin (Grafana, PgAdmin, Dashboard, Prometheus, PostgreSQL): accessible depuis ${#PERSONAL_IPS[@]} IP(s)"
+    for personal_ip in "${PERSONAL_IPS[@]}"; do
+        log_info "  - $personal_ip"
+    done
 }
 
 ################################################################################
@@ -579,37 +593,51 @@ configure_docker_firewall() {
     # FLUSH des règles existantes dans DOCKER-USER (pour éviter les doublons)
     iptables -F DOCKER-USER
 
+    # Convertir PERSONAL_IP en tableau (support multi-IP séparées par virgule)
+    IFS=',' read -ra PERSONAL_IPS <<< "$PERSONAL_IP"
+
     # === AUTORISER LES IPS LÉGITIMES ===
 
-    # Grafana (3000) - IP personnelle uniquement
-    log_info "Autorisation Grafana (3000) depuis ${PERSONAL_IP}..."
-    iptables -I DOCKER-USER -p tcp --dport 3000 -s ${PERSONAL_IP} -j ACCEPT
+    log_info "Autorisation services admin depuis ${#PERSONAL_IPS[@]} IP(s)..."
 
-    # PgAdmin (5050) - IP personnelle uniquement
-    log_info "Autorisation PgAdmin (5050) depuis ${PERSONAL_IP}..."
-    iptables -I DOCKER-USER -p tcp --dport 5050 -s ${PERSONAL_IP} -j ACCEPT
+    local personal_ip_count=0
+    for personal_ip in "${PERSONAL_IPS[@]}"; do
+        personal_ip_count=$((personal_ip_count + 1))
 
-    # Prometheus (9092) - IP personnelle uniquement
-    log_info "Autorisation Prometheus (9092) depuis ${PERSONAL_IP}..."
-    iptables -I DOCKER-USER -p tcp --dport 9092 -s ${PERSONAL_IP} -j ACCEPT
+        # Grafana (3000)
+        iptables -I DOCKER-USER -p tcp --dport 3000 -s "$personal_ip" -j ACCEPT
 
-    # PostgreSQL clients (5432) - IP personnelle uniquement
-    log_info "Autorisation PostgreSQL clients (5432) depuis ${PERSONAL_IP}..."
-    iptables -I DOCKER-USER -p tcp --dport 5432 -s ${PERSONAL_IP} -j ACCEPT
+        # PgAdmin (5050)
+        iptables -I DOCKER-USER -p tcp --dport 5050 -s "$personal_ip" -j ACCEPT
 
-    # PostgreSQL tickets (5433) - IP personnelle uniquement
-    log_info "Autorisation PostgreSQL tickets (5433) depuis ${PERSONAL_IP}..."
-    iptables -I DOCKER-USER -p tcp --dport 5433 -s ${PERSONAL_IP} -j ACCEPT
+        # Dashboard Streamlit (8501)
+        iptables -I DOCKER-USER -p tcp --dport 8501 -s "$personal_ip" -j ACCEPT
+
+        # Prometheus (9092)
+        iptables -I DOCKER-USER -p tcp --dport 9092 -s "$personal_ip" -j ACCEPT
+
+        # PostgreSQL clients (5432)
+        iptables -I DOCKER-USER -p tcp --dport 5432 -s "$personal_ip" -j ACCEPT
+
+        # PostgreSQL tickets (5433)
+        iptables -I DOCKER-USER -p tcp --dport 5433 -s "$personal_ip" -j ACCEPT
+
+        log_info "  [$personal_ip_count/${#PERSONAL_IPS[@]}] IP $personal_ip autorisée (ports: 3000, 5050, 8501, 9092, 5432, 5433)"
+    done
 
     # === BLOQUER TOUT LE RESTE ===
 
-    # Bloquer Grafana depuis Internet (sauf IP autorisée ci-dessus)
+    # Bloquer Grafana depuis Internet (sauf IPs autorisées ci-dessus)
     log_info "Blocage Grafana depuis Internet..."
     iptables -A DOCKER-USER -p tcp --dport 3000 -j DROP
 
     # Bloquer PgAdmin depuis Internet
     log_info "Blocage PgAdmin depuis Internet..."
     iptables -A DOCKER-USER -p tcp --dport 5050 -j DROP
+
+    # Bloquer Dashboard Streamlit depuis Internet
+    log_info "Blocage Dashboard Streamlit depuis Internet..."
+    iptables -A DOCKER-USER -p tcp --dport 8501 -j DROP
 
     # Bloquer Prometheus depuis Internet
     log_info "Blocage Prometheus depuis Internet..."
@@ -633,7 +661,10 @@ configure_docker_firewall() {
 
     log_success "Règles iptables Docker configurées avec succès"
     log_warning "IMPORTANT: Ces règles bloquent l'accès depuis Internet aux services Docker"
-    log_info "Seules les IPs autorisées peuvent accéder: ${PERSONAL_IP}, ${REMOTE_ASTERISK_IP}"
+    log_info "Seules les IPs autorisées peuvent accéder aux services admin: ${#PERSONAL_IPS[@]} IP(s)"
+    for personal_ip in "${PERSONAL_IPS[@]}"; do
+        log_info "  - $personal_ip"
+    done
 }
 
 ################################################################################
@@ -642,6 +673,9 @@ configure_docker_firewall() {
 ################################################################################
 
 display_summary() {
+    # Convertir PERSONAL_IP en tableau (support multi-IP)
+    IFS=',' read -ra PERSONAL_IPS <<< "$PERSONAL_IP"
+
     echo ""
     echo "======================================================================="
     echo -e "${GREEN}Installation terminée avec succès!${NC}"
@@ -649,18 +683,25 @@ display_summary() {
     echo ""
     echo "📊 Services disponibles:"
     echo ""
-    echo -e "  ${BLUE}PostgreSQL (clients):${NC}    ${SERVER_HOST_IP}:5432  ${GREEN}✓ Sécurisé (IP ${PERSONAL_IP})${NC}"
-    echo -e "  ${BLUE}PostgreSQL (tickets):${NC}    ${SERVER_HOST_IP}:5433  ${GREEN}✓ Sécurisé (IP ${PERSONAL_IP})${NC}"
-    echo -e "  ${BLUE}Prometheus:${NC}              http://${SERVER_HOST_IP}:9090  ${GREEN}✓ Sécurisé (IP ${PERSONAL_IP})${NC}"
-    echo -e "  ${BLUE}Grafana:${NC}                 http://${SERVER_HOST_IP}:3000  ${GREEN}✓ Sécurisé (IP ${PERSONAL_IP})${NC}"
+    echo -e "  ${BLUE}PostgreSQL (clients):${NC}    ${SERVER_HOST_IP}:5432  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
+    echo -e "  ${BLUE}PostgreSQL (tickets):${NC}    ${SERVER_HOST_IP}:5433  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
+    echo -e "  ${BLUE}Prometheus:${NC}              http://${SERVER_HOST_IP}:9090  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
+    echo -e "  ${BLUE}Grafana:${NC}                 http://${SERVER_HOST_IP}:3000  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "    ${YELLOW}→ Username:${NC} admin"
     echo -e "    ${YELLOW}→ Password:${NC} ${GRAFANA_PASSWORD}"
-    echo -e "  ${BLUE}PgAdmin:${NC}                 http://${SERVER_HOST_IP}:5050  ${GREEN}✓ Sécurisé (IP ${PERSONAL_IP})${NC}"
-    echo -e "  ${BLUE}Métriques Voicebot:${NC}     http://${SERVER_HOST_IP}:9091/metrics  ${GREEN}✓ Sécurisé (IP ${PERSONAL_IP})${NC}"
+    echo -e "  ${BLUE}PgAdmin:${NC}                 http://${SERVER_HOST_IP}:5050  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
+    echo -e "  ${BLUE}Dashboard Streamlit:${NC}     http://${SERVER_HOST_IP}:8501  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
+    echo -e "  ${BLUE}Métriques Voicebot:${NC}     http://${SERVER_HOST_IP}:9091/metrics  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo ""
     echo "🔒 Sécurité:"
-    echo -e "  ${GREEN}✓${NC} Services d'administration accessibles uniquement depuis: ${GREEN}${PERSONAL_IP}${NC}"
-    echo -e "  ${GREEN}✓${NC} AudioSocket (9090) accessible uniquement depuis: ${GREEN}${REMOTE_ASTERISK_IP}${NC}"
+    echo -e "  ${GREEN}✓${NC} Services d'administration accessibles depuis ${#PERSONAL_IPS[@]} IP(s) autorisée(s):"
+    for personal_ip in "${PERSONAL_IPS[@]}"; do
+        echo -e "      → ${GREEN}${personal_ip}${NC}"
+    done
+    echo -e "  ${GREEN}✓${NC} AudioSocket (9090) accessible depuis ${#ASTERISK_IPS[@]} serveur(s) Asterisk:"
+    for asterisk_ip in "${ASTERISK_IPS[@]}"; do
+        echo -e "      → ${GREEN}${asterisk_ip}${NC}"
+    done
     echo ""
     echo "🤖 Serveur Intelligence Artificielle:"
     echo -e "  ${BLUE}Adresse IP de ce serveur IA:${NC} ${GREEN}${SERVER_HOST_IP}${NC}"

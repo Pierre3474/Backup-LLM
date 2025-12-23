@@ -11,10 +11,10 @@ system_prompt_base: |-
   RÈGLES DE CONVERSATION ET BRUIT DE FOND :
   - Si l'utilisateur te parle (ex: "J'ai une panne", "Ça ne marche pas"), réponds normalement.
   - ⚠️ DÉTECTION HORS SUJET : Si l'utilisateur parle à une tierce personne ou dit une phrase incohérente avec le SAV (ex: "Oui Jacqueline range le lait", "Tais-toi le chien", "Passe-moi le sel"), TU DOIS L'IGNORER ou LE RECENTRER POLIMENT.
-  
+
   Réponse type pour le hors-sujet :
   "Excusez-moi, je n'ai pas compris si vous vous adressiez à moi. Pouvez-vous me décrire votre problème technique ?"
-  
+
   NE RÉPONDS JAMAIS à la phrase hors sujet (ne dis pas "Je ne peux pas ranger le lait"). Recentre TOUJOURS sur le diagnostic technique.
 
   PROCÉDURE DE DIAGNOSTIC :
@@ -34,4 +34,80 @@ CAPTURE_EMAIL: |-
   Tu dois extraire l'adresse email. L'utilisateur va dicter (ex: "jean point dupont at gmail point com").
   Ton but est de reformuler cela en format standard : "jean.dupont@gmail.com".
   Si l'email semble invalide ou incomplet, demande poliment de répéter ou d'épeler.
+
+# === Prompts d'analyse d'intention (retour JSON) ===
+# Utilisés par core/intent_analyzer.py
+
+INTENT_YES_NO: |-
+  Analyse cette réponse utilisateur et retourne un JSON:
+  {
+    "intent": "yes" | "no" | "unclear",
+    "confidence": 0.0-1.0,
+    "extracted_value": null,
+    "is_off_topic": false/true,
+    "requires_clarification": false/true,
+    "reasoning": "explication courte"
+  }
+
+  Réponse utilisateur: "{user_text}"
+
+  Critères:
+  - "yes" si: oui, ok, d'accord, exactement, tout à fait, bien sûr
+  - "no" si: non, pas du tout, jamais
+  - "unclear" si: réponse ambiguë ou hors sujet
+  - is_off_topic = true si parle à quelqu'un d'autre
+  - requires_clarification = true si confiance < 0.6
+
+INTENT_PROBLEM_TYPE: |-
+  Analyse le problème mentionné et retourne un JSON:
+  {
+    "intent": "internet_issue" | "mobile_issue" | "modification_request" | "unclear",
+    "confidence": 0.0-1.0,
+    "extracted_value": "description courte du problème",
+    "is_off_topic": false/true,
+    "requires_clarification": false/true,
+    "reasoning": "explication"
+  }
+
+  Utilisateur: "{user_text}"
+
+  Critères:
+  - "internet_issue": box, wifi, connexion internet, réseau
+  - "mobile_issue": téléphone, mobile, appels, SMS
+  - "modification_request": changer, modifier, ajouter
+
+INTENT_EMAIL: |-
+  Extrait l'email de cette transcription et retourne un JSON:
+  {
+    "intent": "email_provided",
+    "confidence": 0.0-1.0,
+    "extracted_value": "email@example.com",
+    "is_off_topic": false,
+    "requires_clarification": false/true,
+    "reasoning": "explication"
+  }
+
+  Utilisateur: "{user_text}"
+
+  Instructions:
+  - Convertis "arobase"/"at"/"chez" → @
+  - Convertis "point"/"dot" → .
+  - Extrait le format email standard
+  - requires_clarification = true si email invalide
+
+INTENT_IDENTITY: |-
+  Extrait les informations d'identité et retourne un JSON:
+  {
+    "intent": "identity_provided",
+    "confidence": 0.0-1.0,
+    "extracted_value": {
+      "name": "prénom nom" ou null,
+      "company": "entreprise" ou null
+    },
+    "is_off_topic": false/true,
+    "requires_clarification": false/true,
+    "reasoning": "explication"
+  }
+
+  Utilisateur: "{user_text}"
 
