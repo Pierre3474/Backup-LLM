@@ -68,7 +68,7 @@ Ce projet installe **uniquement la brique Intelligence Artificielle** (serveur P
 | **LLM** | Groq API | llama-3.3-70b-versatile | Génération réponses + Intent Analysis |
 | **TTS** | ElevenLabs API | Turbo v2.5 (Antoine) | Text-to-Speech ultra-rapide |
 | **Database** | PostgreSQL | 15+ | Clients + Tickets (2 instances) |
-| **Monitoring** | Prometheus + Grafana | Latest | Métriques temps réel |
+| **Monitoring** | Prometheus | Latest | Métriques temps réel |
 | **Dashboard** | Streamlit | Latest | Interface supervision |
 | **Cache** | LRU + Static | RAM | Audio pré-généré + dynamique |
 
@@ -173,13 +173,12 @@ Le script d'installation **tout-en-un** va :
    - PostgreSQL clients (port 5432)
    - PostgreSQL tickets (port 5433)
    - Prometheus (port 9092)
-   - Grafana (port 3000)
    - PgAdmin (port 5050)
    - Dashboard Streamlit (port 8501)
 
 5. ✅ **Firewall (3 couches)**
    - **UFW** : Port 9090 depuis serveurs Asterisk uniquement
-   - **UFW** : Ports admin (3000, 5050, 8501, etc.) depuis IPs personnelles
+   - **UFW** : Ports admin (5050, 8501, 9092, 5432, 5433) depuis IPs personnelles
    - **Iptables DOCKER-USER** : Empêche contournement UFW par Docker
    - **Application** : Validation IP dans dashboard.py
 
@@ -194,7 +193,6 @@ Le script d'installation **tout-en-un** va :
 | `GROQ_API_KEY` | Clé API Groq (LLM) | `gsk_xyz...` |
 | `OPENAI_API_KEY` | Clé API OpenAI (legacy cache) | `sk-proj-...` |
 | `DB_PASSWORD` | Mot de passe PostgreSQL | `MySecurePass123!` |
-| `GRAFANA_PASSWORD` | Mot de passe admin Grafana | `Admin123!` |
 | `SERVER_HOST_IP` | IP locale serveur IA | `192.168.1.100` |
 | `REMOTE_ASTERISK_IP` | IP 1er serveur Asterisk | `203.0.113.10` |
 | `AMI_USERNAME` | Utilisateur AMI Asterisk | `voicebot-ami` |
@@ -335,20 +333,11 @@ Après installation, les services suivants sont accessibles :
 |---------|----------|----------|-------------|
 | **🤖 Voicebot IA** | `SERVER_IP:9090` | 🔒 IP Asterisk uniquement | AudioSocket (connexion Asterisk) |
 | **📊 Dashboard Streamlit** | `http://SERVER_IP:8501` | 🔒 Multi-IP Admin | Supervision appels + audio |
-| **📈 Grafana** | `http://SERVER_IP:3000` | 🔒 Multi-IP Admin | Visualisation métriques |
 | **📉 Prometheus** | `http://SERVER_IP:9092` | 🔒 Multi-IP Admin | Collecte métriques |
 | **🗄️ PostgreSQL Clients** | `SERVER_IP:5432` | 🔒 Multi-IP Admin | Base clients |
 | **🗄️ PostgreSQL Tickets** | `SERVER_IP:5433` | 🔒 Multi-IP Admin | Base tickets |
 | **🔧 PgAdmin** | `http://SERVER_IP:5050` | 🔒 Multi-IP Admin | Interface PostgreSQL |
 | **📊 Métriques Voicebot** | `http://SERVER_IP:9091/metrics` | 🔒 Multi-IP Admin | Métriques Prometheus format |
-
-### Accès Grafana
-
-```
-URL      : http://SERVER_IP:3000
-Username : admin
-Password : <GRAFANA_PASSWORD défini à l'installation>
-```
 
 ### Accès PgAdmin
 
@@ -513,7 +502,7 @@ La **State Machine** ajuste automatiquement le timeout STT selon le contexte :
 sudo ufw allow from 192.168.1.100 to any port 9090 proto tcp  # Asterisk 1
 sudo ufw allow from 192.168.2.200 to any port 9090 proto tcp  # Asterisk 2
 
-# Services Admin (3000, 5050, 8501, 9092, 5432, 5433) : Multi-IP Admin
+# Services Admin (5050, 8501, 9092, 5432, 5433) : Multi-IP Admin
 sudo ufw allow from 10.0.0.1 to any port 8501 proto tcp       # Dashboard
 sudo ufw allow from 192.168.1.50 to any port 8501 proto tcp   # Dashboard
 ```
@@ -585,11 +574,14 @@ http://SERVER_IP:9091/metrics
 - `voicebot_cache_hits_total` : Cache hits audio
 - `voicebot_cache_misses_total` : Cache misses audio
 
-### Grafana Dashboards
+### Visualisation Métriques
 
-Accédez à Grafana : `http://SERVER_IP:3000` (admin/votre_password)
+Les métriques Prometheus peuvent être visualisées via :
+- **Prometheus UI** : `http://SERVER_IP:9092`
+- **Dashboard Streamlit** : `http://SERVER_IP:8501` (KPIs temps réel)
+- **Outils tiers** : Grafana, DataDog, etc. (si configurés)
 
-**Dashboards recommandés** :
+**Métriques utiles** :
 - Appels en temps réel
 - Taux d'erreur API
 - Latence moyenne

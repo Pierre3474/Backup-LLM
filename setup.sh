@@ -105,21 +105,6 @@ get_user_vars() {
         fi
     done
 
-    # GRAFANA_PASSWORD
-    while true; do
-        read -sp "$(echo -e ${BLUE}Entrez le mot de passe admin Grafana:${NC} )" GRAFANA_PASSWORD
-        echo ""
-        if [[ -n "$GRAFANA_PASSWORD" ]]; then
-            read -sp "$(echo -e ${BLUE}Confirmez le mot de passe admin Grafana:${NC} )" GRAFANA_PASSWORD_CONFIRM
-            echo ""
-            if [[ "$GRAFANA_PASSWORD" == "$GRAFANA_PASSWORD_CONFIRM" ]]; then
-                break
-            fi
-            log_warning "Les mots de passe ne correspondent pas"
-        else
-            log_warning "Le mot de passe ne peut pas être vide"
-        fi
-    done
 
     # SERVER_HOST_IP
     # Détecter l'IP locale automatiquement et proposer
@@ -258,9 +243,6 @@ DB_PASSWORD=${DB_PASSWORD}
 DB_CLIENTS_DSN=${DB_CLIENTS_DSN}
 DB_TICKETS_DSN=${DB_TICKETS_DSN}
 
-# === Grafana Configuration ===
-GRAFANA_PASSWORD=${GRAFANA_PASSWORD}
-
 # === Server Configuration ===
 SERVER_HOST_IP=${SERVER_HOST_IP}
 AUDIOSOCKET_PORT=9090
@@ -312,10 +294,6 @@ services:
   postgres-tickets:
     environment:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
-
-  grafana:
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
 
   prometheus:
     command:
@@ -558,7 +536,6 @@ configure_firewall() {
         personal_ip_count=$((personal_ip_count + 1))
         log_info "  [$personal_ip_count/${#PERSONAL_IPS[@]}] Autorisation de $personal_ip..."
 
-        ufw allow from "$personal_ip" to any port 3000 proto tcp comment "Grafana - IP admin #$personal_ip_count"
         ufw allow from "$personal_ip" to any port 5050 proto tcp comment "PgAdmin - IP admin #$personal_ip_count"
         ufw allow from "$personal_ip" to any port 8501 proto tcp comment "Dashboard - IP admin #$personal_ip_count"
         ufw allow from "$personal_ip" to any port 9091 proto tcp comment "Prometheus - IP admin #$personal_ip_count"
@@ -571,7 +548,7 @@ configure_firewall() {
     for asterisk_ip in "${ASTERISK_IPS[@]}"; do
         log_info "  - $asterisk_ip"
     done
-    log_info "Services admin (Grafana, PgAdmin, Dashboard, Prometheus, PostgreSQL): accessible depuis ${#PERSONAL_IPS[@]} IP(s)"
+    log_info "Services admin (PgAdmin, Dashboard, Prometheus, PostgreSQL): accessible depuis ${#PERSONAL_IPS[@]} IP(s)"
     for personal_ip in "${PERSONAL_IPS[@]}"; do
         log_info "  - $personal_ip"
     done
@@ -604,9 +581,6 @@ configure_docker_firewall() {
     for personal_ip in "${PERSONAL_IPS[@]}"; do
         personal_ip_count=$((personal_ip_count + 1))
 
-        # Grafana (3000)
-        iptables -I DOCKER-USER -p tcp --dport 3000 -s "$personal_ip" -j ACCEPT
-
         # PgAdmin (5050)
         iptables -I DOCKER-USER -p tcp --dport 5050 -s "$personal_ip" -j ACCEPT
 
@@ -622,14 +596,10 @@ configure_docker_firewall() {
         # PostgreSQL tickets (5433)
         iptables -I DOCKER-USER -p tcp --dport 5433 -s "$personal_ip" -j ACCEPT
 
-        log_info "  [$personal_ip_count/${#PERSONAL_IPS[@]}] IP $personal_ip autorisée (ports: 3000, 5050, 8501, 9092, 5432, 5433)"
+        log_info "  [$personal_ip_count/${#PERSONAL_IPS[@]}] IP $personal_ip autorisée (ports: 5050, 8501, 9092, 5432, 5433)"
     done
 
     # === BLOQUER TOUT LE RESTE ===
-
-    # Bloquer Grafana depuis Internet (sauf IPs autorisées ci-dessus)
-    log_info "Blocage Grafana depuis Internet..."
-    iptables -A DOCKER-USER -p tcp --dport 3000 -j DROP
 
     # Bloquer PgAdmin depuis Internet
     log_info "Blocage PgAdmin depuis Internet..."
@@ -685,10 +655,7 @@ display_summary() {
     echo ""
     echo -e "  ${BLUE}PostgreSQL (clients):${NC}    ${SERVER_HOST_IP}:5432  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}PostgreSQL (tickets):${NC}    ${SERVER_HOST_IP}:5433  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
-    echo -e "  ${BLUE}Prometheus:${NC}              http://${SERVER_HOST_IP}:9090  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
-    echo -e "  ${BLUE}Grafana:${NC}                 http://${SERVER_HOST_IP}:3000  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
-    echo -e "    ${YELLOW}→ Username:${NC} admin"
-    echo -e "    ${YELLOW}→ Password:${NC} ${GRAFANA_PASSWORD}"
+    echo -e "  ${BLUE}Prometheus:${NC}              http://${SERVER_HOST_IP}:9092  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}PgAdmin:${NC}                 http://${SERVER_HOST_IP}:5050  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}Dashboard Streamlit:${NC}     http://${SERVER_HOST_IP}:8501  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}Métriques Voicebot:${NC}     http://${SERVER_HOST_IP}:9091/metrics  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
