@@ -8,10 +8,85 @@ import psycopg2
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
+from streamlit.runtime.scriptrunner import get_script_run_ctx
+from streamlit.web.server.websocket_headers import _get_websocket_headers
 
 # Chargement de la configuration
 load_dotenv()
 st.set_page_config(page_title="Wipple SAV Cockpit", layout="wide")
+
+# ============================================
+# SÉCURITÉ : Validation IP
+# ============================================
+
+def get_client_ip():
+    """Récupère l'IP réelle du client depuis les headers de la requête"""
+    try:
+        ctx = get_script_run_ctx()
+        if ctx is None:
+            return None
+
+        # Tenter d'obtenir les headers WebSocket
+        headers = _get_websocket_headers()
+
+        if headers:
+            # Vérifier X-Forwarded-For (proxy/reverse proxy)
+            forwarded_for = headers.get("X-Forwarded-For")
+            if forwarded_for:
+                # X-Forwarded-For peut contenir plusieurs IPs séparées par des virgules
+                # La première est l'IP réelle du client
+                return forwarded_for.split(',')[0].strip()
+
+            # Vérifier X-Real-IP (nginx)
+            real_ip = headers.get("X-Real-IP")
+            if real_ip:
+                return real_ip.strip()
+
+            # Fallback: Remote-Addr
+            remote_addr = headers.get("Remote-Addr")
+            if remote_addr:
+                return remote_addr.strip()
+
+        return None
+    except Exception as e:
+        st.warning(f"Impossible de récupérer l'IP client: {e}")
+        return None
+
+
+def validate_ip_access():
+    """Valide que l'IP du visiteur est autorisée"""
+    # Récupérer la liste des IPs autorisées depuis .env
+    allowed_ips_str = os.getenv("PERSONAL_IP", "")
+
+    if not allowed_ips_str:
+        st.error("🚫 ERREUR DE CONFIGURATION: Aucune IP autorisée définie (PERSONAL_IP manquant)")
+        st.stop()
+
+    # Parser les IPs autorisées (séparées par virgules)
+    allowed_ips = [ip.strip() for ip in allowed_ips_str.split(',') if ip.strip()]
+
+    # Récupérer l'IP du client
+    client_ip = get_client_ip()
+
+    if client_ip is None:
+        st.error("🚫 ACCÈS REFUSÉ: Impossible de déterminer votre adresse IP")
+        st.info("Ce dashboard est protégé. Contactez l'administrateur.")
+        st.stop()
+
+    # Vérifier si l'IP est autorisée
+    if client_ip not in allowed_ips:
+        st.error(f"🚫 ACCÈS REFUSÉ")
+        st.warning(f"Votre IP ({client_ip}) n'est pas autorisée à accéder à ce dashboard.")
+        st.info("IPs autorisées: " + ", ".join(allowed_ips))
+        st.caption("Contactez l'administrateur système pour obtenir l'accès.")
+        st.stop()
+
+    # Accès autorisé
+    st.success(f"✅ Accès autorisé depuis {client_ip}")
+
+
+# Vérifier l'accès avant toute opération
+validate_ip_access()
 
 # Configuration des chemins (relatif à la racine du projet)
 LOGS_DIR = Path("logs/calls")
