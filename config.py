@@ -135,7 +135,7 @@ GROQ_MAX_TOKENS = 150
 
 # === ElevenLabs TTS Settings ===
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "N2lVS1w4EtoT3dr4eOWO")  # Adrien - French voice
-ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2")  # Modèle multilingue v2
+ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_turbo_v2_5")  # Modèle Turbo v2.5 (optimisé téléphonie, -50% coût, <300ms latence)
 ELEVENLABS_STABILITY = 0.5  # Stabilité de la voix (0.0 - 1.0)
 ELEVENLABS_SIMILARITY_BOOST = 0.75  # Clarté de la voix (0.0 - 1.0)
 ELEVENLABS_STYLE = 0.0  # Style exagération (0.0 - 1.0)

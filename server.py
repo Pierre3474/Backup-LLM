@@ -1122,11 +1122,11 @@ class CallHandler:
 
             # 2. Streaming Generation (Turbo v2.5)
             logger.info(f"[{self.call_id}] Streaming TTS generation...")
-            
+
             audio_stream_iterator = self.elevenlabs_client.generate(
                 text=text,
                 voice=config.ELEVENLABS_VOICE_ID,
-                model="eleven_turbo_v2_5", # Moins cher et plus rapide
+                model=config.ELEVENLABS_MODEL,  # Utilise la config centralisée
                 stream=True,
                 output_format="mp3_44100_128",
                 latency=1
