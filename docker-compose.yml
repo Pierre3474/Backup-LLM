@@ -50,6 +50,9 @@ services:
     depends_on:
       - postgres-clients
       - postgres-tickets
+    ports:
+      - "9090:9090"  # AudioSocket (Asterisk)
+      - "9091:9091"  # Métriques Prometheus
     networks:
       - voicebot-network
     environment:

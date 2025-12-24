@@ -180,11 +180,11 @@ get_user_vars() {
         log_warning "Le mot de passe AMI ne peut pas être vide"
     done
 
-    # PERSONAL_IP (pour sécuriser PgAdmin, Dashboard, PostgreSQL)
+    # PERSONAL_IP (pour sécuriser Dashboard, PostgreSQL)
     echo ""
     log_info "=== SÉCURITÉ : Accès aux services d'administration ==="
     echo ""
-    echo "Pour sécuriser PgAdmin, Dashboard et PostgreSQL,"
+    echo "Pour sécuriser Dashboard et PostgreSQL,"
     echo "vous devez fournir votre adresse IP publique personnelle."
     echo ""
     echo "Pour connaître votre IP publique, visitez: https://mon-ip.io"
@@ -496,7 +496,6 @@ configure_firewall() {
         personal_ip_count=$((personal_ip_count + 1))
         log_info "  [$personal_ip_count/${#PERSONAL_IPS[@]}] Autorisation de $personal_ip..."
 
-        ufw allow from "$personal_ip" to any port 5050 proto tcp comment "PgAdmin - IP admin #$personal_ip_count"
         ufw allow from "$personal_ip" to any port 8501 proto tcp comment "Dashboard - IP admin #$personal_ip_count"
         ufw allow from "$personal_ip" to any port 5432 proto tcp comment "PostgreSQL clients - IP admin #$personal_ip_count"
         ufw allow from "$personal_ip" to any port 5433 proto tcp comment "PostgreSQL tickets - IP admin #$personal_ip_count"
@@ -507,7 +506,7 @@ configure_firewall() {
     for asterisk_ip in "${ASTERISK_IPS[@]}"; do
         log_info "  - $asterisk_ip"
     done
-    log_info "Services admin (PgAdmin, Dashboard, PostgreSQL): accessible depuis ${#PERSONAL_IPS[@]} IP(s)"
+    log_info "Services admin (Dashboard, PostgreSQL): accessible depuis ${#PERSONAL_IPS[@]} IP(s)"
     for personal_ip in "${PERSONAL_IPS[@]}"; do
         log_info "  - $personal_ip"
     done
@@ -540,9 +539,6 @@ configure_docker_firewall() {
     for personal_ip in "${PERSONAL_IPS[@]}"; do
         personal_ip_count=$((personal_ip_count + 1))
 
-        # PgAdmin (5050)
-        iptables -I DOCKER-USER -p tcp --dport 5050 -s "$personal_ip" -j ACCEPT
-
         # Dashboard Streamlit (8501)
         iptables -I DOCKER-USER -p tcp --dport 8501 -s "$personal_ip" -j ACCEPT
 
@@ -552,14 +548,10 @@ configure_docker_firewall() {
         # PostgreSQL tickets (5433)
         iptables -I DOCKER-USER -p tcp --dport 5433 -s "$personal_ip" -j ACCEPT
 
-        log_info "  [$personal_ip_count/${#PERSONAL_IPS[@]}] IP $personal_ip autorisée (ports: 5050, 8501, 5432, 5433)"
+        log_info "  [$personal_ip_count/${#PERSONAL_IPS[@]}] IP $personal_ip autorisée (ports: 8501, 5432, 5433)"
     done
 
     # === BLOQUER TOUT LE RESTE ===
-
-    # Bloquer PgAdmin depuis Internet
-    log_info "Blocage PgAdmin depuis Internet..."
-    iptables -A DOCKER-USER -p tcp --dport 5050 -j DROP
 
     # Bloquer Dashboard Streamlit depuis Internet
     log_info "Blocage Dashboard Streamlit depuis Internet..."
@@ -607,7 +599,6 @@ display_summary() {
     echo ""
     echo -e "  ${BLUE}PostgreSQL (clients):${NC}    ${SERVER_HOST_IP}:5432  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}PostgreSQL (tickets):${NC}    ${SERVER_HOST_IP}:5433  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
-    echo -e "  ${BLUE}PgAdmin:${NC}                 http://${SERVER_HOST_IP}:5050  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}Dashboard Streamlit:${NC}     http://${SERVER_HOST_IP}:8501  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo ""
     echo "🔒 Sécurité:"
