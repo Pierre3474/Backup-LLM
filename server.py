@@ -1128,8 +1128,7 @@ class CallHandler:
                 voice=config.ELEVENLABS_VOICE_ID,
                 model=config.ELEVENLABS_MODEL,  # Utilise la config centralisée
                 stream=True,
-                output_format="mp3_44100_128",
-                latency=1
+                output_format="mp3_44100_128"
             )
             
             # 3. Conversion à la volée (Pipe)
