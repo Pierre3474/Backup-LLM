@@ -89,6 +89,15 @@ get_user_vars() {
         log_warning "La clé API OpenAI ne peut pas être vide"
     done
 
+    # ELEVENLABS_API_KEY
+    while true; do
+        read -p "$(echo -e ${BLUE}Entrez votre ELEVENLABS_API_KEY:${NC} )" ELEVENLABS_API_KEY
+        if [[ -n "$ELEVENLABS_API_KEY" ]]; then
+            break
+        fi
+        log_warning "La clé API ElevenLabs ne peut pas être vide"
+    done
+
     # DB_PASSWORD
     while true; do
         read -sp "$(echo -e ${BLUE}Entrez le mot de passe PostgreSQL:${NC} )" DB_PASSWORD
@@ -237,6 +246,13 @@ generate_env_file() {
 DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
 GROQ_API_KEY=${GROQ_API_KEY}
 OPENAI_API_KEY=${OPENAI_API_KEY}
+ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+
+# === ElevenLabs TTS Configuration ===
+# Modèle Flash v2.5 pour latence ultra-faible (<300ms)
+ELEVENLABS_MODEL=eleven_flash_v2_5
+# Voix française Adrien (claire et naturelle)
+ELEVENLABS_VOICE_ID=N2lVS1w4EtoT3dr4eOWO
 
 # === Database Configuration ===
 DB_PASSWORD=${DB_PASSWORD}
@@ -533,6 +549,20 @@ configure_docker_firewall() {
 
     # === AUTORISER LES IPS LÉGITIMES ===
 
+    # 1. Autoriser les serveurs Asterisk sur le port 9090 (AudioSocket)
+    log_info "Autorisation AudioSocket (9090) depuis ${#ASTERISK_IPS[@]} serveur(s) Asterisk..."
+
+    local asterisk_ip_count=0
+    for asterisk_ip in "${ASTERISK_IPS[@]}"; do
+        asterisk_ip_count=$((asterisk_ip_count + 1))
+
+        # AudioSocket (9090) - CRITIQUE pour recevoir les appels
+        iptables -I DOCKER-USER -p tcp --dport 9090 -s "$asterisk_ip" -j ACCEPT
+
+        log_info "  [$asterisk_ip_count/${#ASTERISK_IPS[@]}] IP Asterisk $asterisk_ip autorisée (port 9090)"
+    done
+
+    # 2. Autoriser les IPs admin pour les services d'administration
     log_info "Autorisation services admin depuis ${#PERSONAL_IPS[@]} IP(s)..."
 
     local personal_ip_count=0
@@ -548,10 +578,14 @@ configure_docker_firewall() {
         # PostgreSQL tickets (5433)
         iptables -I DOCKER-USER -p tcp --dport 5433 -s "$personal_ip" -j ACCEPT
 
-        log_info "  [$personal_ip_count/${#PERSONAL_IPS[@]}] IP $personal_ip autorisée (ports: 8501, 5432, 5433)"
+        log_info "  [$personal_ip_count/${#PERSONAL_IPS[@]}] IP admin $personal_ip autorisée (ports: 8501, 5432, 5433)"
     done
 
     # === BLOQUER TOUT LE RESTE ===
+
+    # Bloquer AudioSocket (9090) depuis Internet (sauf IPs Asterisk autorisées)
+    log_info "Blocage AudioSocket (9090) depuis Internet..."
+    iptables -A DOCKER-USER -p tcp --dport 9090 -j DROP
 
     # Bloquer Dashboard Streamlit depuis Internet
     log_info "Blocage Dashboard Streamlit depuis Internet..."
@@ -575,7 +609,13 @@ configure_docker_firewall() {
 
     log_success "Règles iptables Docker configurées avec succès"
     log_warning "IMPORTANT: Ces règles bloquent l'accès depuis Internet aux services Docker"
-    log_info "Seules les IPs autorisées peuvent accéder aux services admin: ${#PERSONAL_IPS[@]} IP(s)"
+
+    log_info "IPs Asterisk autorisées (port 9090 AudioSocket): ${#ASTERISK_IPS[@]} serveur(s)"
+    for asterisk_ip in "${ASTERISK_IPS[@]}"; do
+        log_info "  - $asterisk_ip"
+    done
+
+    log_info "IPs admin autorisées (Dashboard, PostgreSQL): ${#PERSONAL_IPS[@]} IP(s)"
     for personal_ip in "${PERSONAL_IPS[@]}"; do
         log_info "  - $personal_ip"
     done
@@ -597,6 +637,7 @@ display_summary() {
     echo ""
     echo "📊 Services disponibles:"
     echo ""
+    echo -e "  ${BLUE}AudioSocket (Asterisk):${NC}  ${SERVER_HOST_IP}:9090  ${GREEN}✓ Sécurisé (${#ASTERISK_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}PostgreSQL (clients):${NC}    ${SERVER_HOST_IP}:5432  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}PostgreSQL (tickets):${NC}    ${SERVER_HOST_IP}:5433  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}Dashboard Streamlit:${NC}     http://${SERVER_HOST_IP}:8501  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
