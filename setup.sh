@@ -180,11 +180,11 @@ get_user_vars() {
         log_warning "Le mot de passe AMI ne peut pas être vide"
     done
 
-    # PERSONAL_IP (pour sécuriser Grafana, PgAdmin, Prometheus, PostgreSQL)
+    # PERSONAL_IP (pour sécuriser PgAdmin, Dashboard, PostgreSQL)
     echo ""
     log_info "=== SÉCURITÉ : Accès aux services d'administration ==="
     echo ""
-    echo "Pour sécuriser Grafana, PgAdmin, Prometheus et PostgreSQL,"
+    echo "Pour sécuriser PgAdmin, Dashboard et PostgreSQL,"
     echo "vous devez fournir votre adresse IP publique personnelle."
     echo ""
     echo "Pour connaître votre IP publique, visitez: https://mon-ip.io"
@@ -261,9 +261,6 @@ AMI_SECRET=${AMI_SECRET}
 # IP personnelle autorisée pour accéder aux services d'administration
 PERSONAL_IP=${PERSONAL_IP}
 
-# === Monitoring ===
-PROMETHEUS_PORT=9091
-
 # === Logging ===
 LOG_LEVEL=INFO
 EOF
@@ -294,46 +291,9 @@ services:
   postgres-tickets:
     environment:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
-
-  prometheus:
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
 EOF
 
     log_success "Fichier docker-compose.override.yml créé avec succès"
-}
-
-################################################################################
-# Fonction: generate_prometheus_config
-# Génère le fichier prometheus.yml avec l'IP du serveur
-################################################################################
-
-generate_prometheus_config() {
-    log_info "Génération du fichier prometheus.yml..."
-
-    mkdir -p config
-
-    cat > config/prometheus.yml <<EOF
-# Configuration Prometheus pour Voicebot PY_SAV
-# Généré automatiquement par setup.sh
-
-global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-
-scrape_configs:
-  - job_name: 'voicebot'
-    static_configs:
-      - targets: ['${SERVER_HOST_IP}:9091']
-        labels:
-          instance: 'voicebot-server'
-          environment: 'production'
-EOF
-
-    log_success "Fichier prometheus.yml créé avec succès"
 }
 
 ################################################################################
@@ -538,7 +498,6 @@ configure_firewall() {
 
         ufw allow from "$personal_ip" to any port 5050 proto tcp comment "PgAdmin - IP admin #$personal_ip_count"
         ufw allow from "$personal_ip" to any port 8501 proto tcp comment "Dashboard - IP admin #$personal_ip_count"
-        ufw allow from "$personal_ip" to any port 9091 proto tcp comment "Prometheus - IP admin #$personal_ip_count"
         ufw allow from "$personal_ip" to any port 5432 proto tcp comment "PostgreSQL clients - IP admin #$personal_ip_count"
         ufw allow from "$personal_ip" to any port 5433 proto tcp comment "PostgreSQL tickets - IP admin #$personal_ip_count"
     done
@@ -548,7 +507,7 @@ configure_firewall() {
     for asterisk_ip in "${ASTERISK_IPS[@]}"; do
         log_info "  - $asterisk_ip"
     done
-    log_info "Services admin (PgAdmin, Dashboard, Prometheus, PostgreSQL): accessible depuis ${#PERSONAL_IPS[@]} IP(s)"
+    log_info "Services admin (PgAdmin, Dashboard, PostgreSQL): accessible depuis ${#PERSONAL_IPS[@]} IP(s)"
     for personal_ip in "${PERSONAL_IPS[@]}"; do
         log_info "  - $personal_ip"
     done
@@ -587,16 +546,13 @@ configure_docker_firewall() {
         # Dashboard Streamlit (8501)
         iptables -I DOCKER-USER -p tcp --dport 8501 -s "$personal_ip" -j ACCEPT
 
-        # Prometheus (9092)
-        iptables -I DOCKER-USER -p tcp --dport 9092 -s "$personal_ip" -j ACCEPT
-
         # PostgreSQL clients (5432)
         iptables -I DOCKER-USER -p tcp --dport 5432 -s "$personal_ip" -j ACCEPT
 
         # PostgreSQL tickets (5433)
         iptables -I DOCKER-USER -p tcp --dport 5433 -s "$personal_ip" -j ACCEPT
 
-        log_info "  [$personal_ip_count/${#PERSONAL_IPS[@]}] IP $personal_ip autorisée (ports: 5050, 8501, 9092, 5432, 5433)"
+        log_info "  [$personal_ip_count/${#PERSONAL_IPS[@]}] IP $personal_ip autorisée (ports: 5050, 8501, 5432, 5433)"
     done
 
     # === BLOQUER TOUT LE RESTE ===
@@ -608,10 +564,6 @@ configure_docker_firewall() {
     # Bloquer Dashboard Streamlit depuis Internet
     log_info "Blocage Dashboard Streamlit depuis Internet..."
     iptables -A DOCKER-USER -p tcp --dport 8501 -j DROP
-
-    # Bloquer Prometheus depuis Internet
-    log_info "Blocage Prometheus depuis Internet..."
-    iptables -A DOCKER-USER -p tcp --dport 9092 -j DROP
 
     # Bloquer PostgreSQL depuis Internet
     log_info "Blocage PostgreSQL depuis Internet..."
@@ -655,10 +607,8 @@ display_summary() {
     echo ""
     echo -e "  ${BLUE}PostgreSQL (clients):${NC}    ${SERVER_HOST_IP}:5432  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}PostgreSQL (tickets):${NC}    ${SERVER_HOST_IP}:5433  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
-    echo -e "  ${BLUE}Prometheus:${NC}              http://${SERVER_HOST_IP}:9092  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}PgAdmin:${NC}                 http://${SERVER_HOST_IP}:5050  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}Dashboard Streamlit:${NC}     http://${SERVER_HOST_IP}:8501  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
-    echo -e "  ${BLUE}Métriques Voicebot:${NC}     http://${SERVER_HOST_IP}:9091/metrics  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo ""
     echo "🔒 Sécurité:"
     echo -e "  ${GREEN}✓${NC} Services d'administration accessibles depuis ${#PERSONAL_IPS[@]} IP(s) autorisée(s):"
@@ -808,18 +758,12 @@ install_full_stack() {
     if [[ "$SKIP_CONFIGURATION" == false ]]; then
         generate_env_file
         generate_docker_compose_override
-        generate_prometheus_config
     else
         log_info "Fichiers de configuration existants conservés"
         # Vérifier que docker-compose.override.yml existe
         if [[ ! -f "docker-compose.override.yml" ]]; then
             log_warning "docker-compose.override.yml manquant - régénération"
             generate_docker_compose_override
-        fi
-        # Vérifier que prometheus.yml existe
-        if [[ ! -f "config/prometheus.yml" ]]; then
-            log_warning "prometheus.yml manquant - régénération"
-            generate_prometheus_config
         fi
     fi
 
@@ -888,7 +832,6 @@ clean_environment() {
     log_info "Suppression des fichiers de configuration..."
     rm -f .env
     rm -f docker-compose.override.yml
-    rm -f config/prometheus.yml
 
     # Supprimer le cache audio
     if [[ -d "assets/cache" ]]; then
