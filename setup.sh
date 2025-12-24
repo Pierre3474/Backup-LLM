@@ -221,9 +221,10 @@ get_user_vars() {
 generate_env_file() {
     log_info "Génération du fichier .env..."
 
-    # Construire les DSN avec les ports Docker par défaut
-    DB_CLIENTS_DSN="postgresql://voicebot:${DB_PASSWORD}@${SERVER_HOST_IP}:5432/db_clients"
-    DB_TICKETS_DSN="postgresql://voicebot:${DB_PASSWORD}@${SERVER_HOST_IP}:5433/db_tickets"
+    # Construire les DSN avec les noms de services Docker (réseau interne)
+    # Important: Utiliser les noms de services et non l'IP publique pour éviter Connection Refused
+    DB_CLIENTS_DSN="postgresql://voicebot:${DB_PASSWORD}@postgres-clients:5432/db_clients"
+    DB_TICKETS_DSN="postgresql://voicebot:${DB_PASSWORD}@postgres-tickets:5432/db_tickets"
 
     # Créer le fichier .env
     cat > .env <<EOF
@@ -456,11 +457,11 @@ setup_docker_stack() {
 
     # Initialiser la base de données clients
     log_info "Initialisation de la base de données clients (db_clients)..."
-    docker compose exec -T postgres-clients psql -U voicebot -d db_clients < init_db.sql
+    docker compose exec -T postgres-clients psql -U voicebot -d db_clients < init_clients.sql
 
     # Initialiser la base de données tickets
     log_info "Initialisation de la base de données tickets (db_tickets)..."
-    docker compose exec -T postgres-tickets psql -U voicebot -d db_tickets < init_db.sql
+    docker compose exec -T postgres-tickets psql -U voicebot -d db_tickets < init_tickets.sql
 
     log_success "Stack Docker configurée et initialisée avec succès"
 }
