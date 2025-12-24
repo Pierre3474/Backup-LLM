@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     libpq-dev \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Créer le répertoire de travail
