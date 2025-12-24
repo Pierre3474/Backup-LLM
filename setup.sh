@@ -80,15 +80,6 @@ get_user_vars() {
         log_warning "La clé API Groq ne peut pas être vide"
     done
 
-    # OPENAI_API_KEY
-    while true; do
-        read -p "$(echo -e ${BLUE}Entrez votre OPENAI_API_KEY:${NC} )" OPENAI_API_KEY
-        if [[ -n "$OPENAI_API_KEY" ]]; then
-            break
-        fi
-        log_warning "La clé API OpenAI ne peut pas être vide"
-    done
-
     # ELEVENLABS_API_KEY
     while true; do
         read -p "$(echo -e ${BLUE}Entrez votre ELEVENLABS_API_KEY:${NC} )" ELEVENLABS_API_KEY
@@ -245,7 +236,6 @@ generate_env_file() {
 # === API Keys ===
 DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
 GROQ_API_KEY=${GROQ_API_KEY}
-OPENAI_API_KEY=${OPENAI_API_KEY}
 ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
 
 # === ElevenLabs TTS Configuration ===
@@ -707,43 +697,90 @@ check_existing_installation() {
         echo ""
         log_info "Un fichier .env a été trouvé avec une configuration existante."
         echo ""
-        echo "Options disponibles:"
-        echo "  1) Utiliser la configuration existante (installation rapide)"
-        echo "     - Conserve les clés API, mots de passe et configuration AMI"
-        echo "     - Réinstalle uniquement les dépendances Python"
-        echo "     - Redémarre les conteneurs Docker"
+        echo "╔═══════════════════════════════════════════════════════════════════╗"
+        echo "║  OPTION 1 : Démarrage Rapide (Garder la config actuelle)         ║"
+        echo "╠═══════════════════════════════════════════════════════════════════╣"
+        echo "║  ✓ Ne demande RIEN (clés, IPs, mots de passe conservés)          ║"
+        echo "║  ✓ Charge les variables depuis .env existant                     ║"
+        echo "║  ✓ Passe directement à : Cache audio → Docker → Firewall         ║"
+        echo "║  ✓ Redémarre les services avec la config actuelle                ║"
+        echo "╚═══════════════════════════════════════════════════════════════════╝"
         echo ""
-        echo "  2) Reconfigurer complètement (installation complète)"
-        echo "     - Redemande TOUTES les variables (API keys, AMI, passwords)"
-        echo "     - Régénère tous les fichiers de configuration"
-        echo "     - Écrase la configuration existante"
+        echo "╔═══════════════════════════════════════════════════════════════════╗"
+        echo "║  OPTION 2 : Reconfiguration Complète (Tout effacer)              ║"
+        echo "╠═══════════════════════════════════════════════════════════════════╣"
+        echo "║  ⚠  AVERTISSEMENT : Cette option écrase tout                      ║"
+        echo "║  ↻ Redemande TOUTES les variables :                              ║"
+        echo "║     - Clés API (Deepgram, Groq, ElevenLabs)                       ║"
+        echo "║     - IPs (Serveur IA, Asterisk, Admin)                          ║"
+        echo "║     - Mots de passe (PostgreSQL, AMI)                             ║"
+        echo "║  ✗ Écrase .env et docker-compose.override.yml                     ║"
+        echo "╚═══════════════════════════════════════════════════════════════════╝"
         echo ""
 
         while true; do
             read -p "$(echo -e ${BLUE}Votre choix [1/2]:${NC} )" choice
             case $choice in
                 1)
-                    log_success "Utilisation de la configuration existante"
+                    log_success "✓ Démarrage Rapide : Configuration existante conservée"
                     SKIP_CONFIGURATION=true
 
-                    # Charger les variables depuis .env pour les afficher
-                    source .env 2>/dev/null
+                    # Charger TOUTES les variables depuis .env (crucial pour éviter les erreurs plus tard)
+                    set -a  # Auto-export toutes les variables
+                    source .env 2>/dev/null || {
+                        log_error "Impossible de charger .env - fichier corrompu ?"
+                        SKIP_CONFIGURATION=false
+                        return
+                    }
+                    set +a
+
+                    # Reconstruire le tableau ASTERISK_IPS depuis le fichier des IPs autorisées
+                    ASTERISK_IPS=()
+                    ALLOWED_IPS_FILE="/opt/PY_SAV/.allowed_asterisk_ips"
+                    if [[ -f "$ALLOWED_IPS_FILE" ]]; then
+                        while IFS='|' read -r ip description; do
+                            if [[ -n "$ip" ]]; then
+                                ASTERISK_IPS+=("$ip")
+                            fi
+                        done < "$ALLOWED_IPS_FILE"
+                    else
+                        # Fallback: utiliser REMOTE_ASTERISK_IP si fichier manquant
+                        if [[ -n "$REMOTE_ASTERISK_IP" ]]; then
+                            ASTERISK_IPS=("$REMOTE_ASTERISK_IP")
+                        fi
+                    fi
+
+                    # Convertir PERSONAL_IP en tableau pour affichage
+                    IFS=',' read -ra PERSONAL_IPS_ARRAY <<< "$PERSONAL_IP"
+
                     echo ""
-                    log_info "Configuration actuelle:"
-                    log_info "  - Serveur IA: ${SERVER_HOST_IP:-non défini}"
-                    log_info "  - Serveur Asterisk: ${AMI_HOST:-non défini}"
-                    log_info "  - Utilisateur AMI: ${AMI_USERNAME:-non défini}"
+                    log_info "Configuration chargée depuis .env :"
+                    log_info "  ├─ Serveur IA         : ${SERVER_HOST_IP:-non défini}"
+                    log_info "  ├─ Serveur Asterisk   : ${AMI_HOST:-non défini}"
+                    log_info "  ├─ Utilisateur AMI    : ${AMI_USERNAME:-non défini}"
+                    log_info "  ├─ IPs Asterisk       : ${#ASTERISK_IPS[@]} serveur(s)"
+                    log_info "  ├─ IPs Admin          : ${#PERSONAL_IPS_ARRAY[@]} IP(s)"
+                    log_info "  └─ Base de données    : ${DB_CLIENTS_DSN:-non défini}"
+                    echo ""
+                    log_info "Les étapes suivantes : Génération cache → Docker → Firewall → Démarrage"
                     echo ""
                     break
                     ;;
                 2)
-                    log_warning "Reconfiguration complète - les anciennes valeurs seront écrasées"
+                    log_warning "⚠  Reconfiguration complète - les anciennes valeurs seront ÉCRASÉES"
                     SKIP_CONFIGURATION=false
                     echo ""
-                    read -p "$(echo -e ${RED}Êtes-vous sûr? [y/N]:${NC} )" -n 1 -r
+                    read -p "$(echo -e ${RED}Êtes-vous ABSOLUMENT sûr ? [y/N]:${NC} )" -n 1 -r
                     echo ""
                     if [[ $REPLY =~ ^[Yy]$ ]]; then
+                        log_info "Suppression de la configuration existante..."
+                        rm -f .env docker-compose.override.yml 2>/dev/null
+                        log_success "Ancienne configuration supprimée - collecte des nouvelles variables..."
+                        echo ""
                         break
+                    else
+                        log_info "Annulé - retour au menu"
+                        echo ""
                     fi
                     ;;
                 *)
@@ -778,12 +815,6 @@ install_full_stack() {
     # Étape 3: Collecte des variables (skip si configuration existante)
     if [[ "$SKIP_CONFIGURATION" == false ]]; then
         get_user_vars
-    else
-        log_info "Configuration existante utilisée - skip collecte des variables"
-        # Charger les variables depuis .env
-        set -a
-        source .env
-        set +a
     fi
 
     # Étape 4: Génération des fichiers de configuration (skip si configuration existante)
