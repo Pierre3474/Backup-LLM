@@ -128,6 +128,10 @@ DEEPGRAM_LANGUAGE = "fr"
 DEEPGRAM_ENCODING = "linear16"
 DEEPGRAM_SAMPLE_RATE = SAMPLE_RATE_ASTERISK
 
+# Endpointing dynamique (temps d'attente du silence avant de finaliser)
+DEEPGRAM_ENDPOINTING_SHORT = 500   # 500ms pour réponses courtes (Oui/Non, validation)
+DEEPGRAM_ENDPOINTING_LONG = 1200   # 1200ms pour réponses longues (description problème)
+
 # === Groq Settings ===
 GROQ_MODEL = "llama-3.3-70b-versatile"
 GROQ_TEMPERATURE = 0.7
