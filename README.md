@@ -897,7 +897,7 @@ Pour toute question technique :
 
 ## 📝 License
 
-Proprietary -  URTADO Pierre © 2025
+Proprietary -  Wipple © 2025
 
 ---
 
