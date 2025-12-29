@@ -22,11 +22,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copier tout le code source
-COPY . .
+# Créer les répertoires nécessaires (AVANT de copier le code)
+RUN mkdir -p /app/logs/calls /app/cache
 
-# Créer les répertoires nécessaires
-RUN mkdir -p /app/logs/calls /app/cache /app/assets/cache
+# Copier tout le code source (y compris assets/cache/ avec les audios pré-générés)
+COPY . .
 
 # Exposer les ports
 EXPOSE 9090 9091
