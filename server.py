@@ -35,6 +35,7 @@ from panoramisk import Manager as AMIManager
 import config
 from audio_utils import generate_silence, stream_and_convert_to_8khz
 import db_utils
+import metrics
 
 # Configure logging
 logging.basicConfig(
@@ -1204,6 +1205,13 @@ class CallHandler:
                 logger.warning(f"[{self.call_id}] Cache miss: {phrase_key}")
                 return
 
+            # TRACKING: Cache TTS hit (économie API)
+            try:
+                metrics.track_tts_cache_hit()
+                metrics.tts_response_time.labels(source='cache').observe(0.001)  # ~1ms pour cache
+            except Exception:
+                pass
+
             # Envoyer directement à la queue de sortie (déjà en 8kHz)
             self.is_speaking = True
             await self._send_audio(audio_data)
@@ -1265,11 +1273,20 @@ class CallHandler:
         """Version Optimisée : Streaming Temps Réel + Modèle Turbo"""
         try:
             self.is_speaking = True
+            start_time = time.time()
 
             # 1. Cache Check
             cached_audio = self.audio_cache.get_dynamic(text)
             if cached_audio:
                 logger.info(f"[{self.call_id}] Cache HIT dynamic")
+
+                # TRACKING: Cache dynamique hit
+                try:
+                    metrics.track_tts_cache_hit()
+                    metrics.tts_response_time.labels(source='cache').observe(time.time() - start_time)
+                except Exception:
+                    pass
+
                 await self._send_audio(cached_audio)
                 self.is_speaking = False
                 return
@@ -1284,24 +1301,31 @@ class CallHandler:
                 stream=True,
                 output_format="mp3_44100_128"
             )
-            
+
             # 3. Conversion à la volée (Pipe)
             pcm_stream = stream_and_convert_to_8khz(audio_stream_iterator)
 
             # 4. Envoi immédiat à Asterisk
             full_audio_for_cache = bytearray()
-            
+
             for chunk in pcm_stream:
-                if not self.output_queue and not self.is_speaking: 
+                if not self.output_queue and not self.is_speaking:
                     break # Stop si interruption
-                    
+
                 self.output_queue.append(chunk)
                 full_audio_for_cache.extend(chunk)
 
             # 5. Mise en cache
             if len(full_audio_for_cache) > 0:
                 self.audio_cache.set_dynamic(text, bytes(full_audio_for_cache))
-            
+
+            # TRACKING: Appel API ElevenLabs
+            try:
+                response_time = time.time() - start_time
+                metrics.track_tts_api_call(characters=len(text), response_time=response_time)
+            except Exception:
+                pass
+
             self.is_speaking = False
 
         except Exception as e:
@@ -1445,6 +1469,25 @@ class CallHandler:
             ticket_id = await db_utils.create_ticket(ticket_data)
             if ticket_id:
                 logger.info(f"[{self.call_id}] Ticket saved: {ticket_id} (tag: {classification['tag']}, sentiment: {sentiment})")
+
+                # TRACKING MÉTRIQUES PROMETHEUS
+                try:
+                    # Enregistrer l'appel complété
+                    metrics.track_call_completed(
+                        status=status,
+                        problem_type=self.context.get('problem_type', 'unknown'),
+                        duration=call_duration,
+                        sentiment=sentiment
+                    )
+
+                    # Enregistrer le ticket créé
+                    metrics.track_ticket_created(
+                        severity=classification['severity'],
+                        tag=classification['tag'],
+                        problem_type=self.context.get('problem_type', 'unknown')
+                    )
+                except Exception as e:
+                    logger.error(f"[{self.call_id}] Failed to track metrics: {e}")
             else:
                 logger.warning(f"[{self.call_id}] Failed to save ticket")
 
@@ -1625,6 +1668,15 @@ async def main():
     except Exception as e:
         logger.error(f"❌ Failed to initialize database: {e}")
         logger.warning("⚠️  Continuing without database (tickets won't be saved)")
+
+    # INITIALISER LE SERVEUR DE MÉTRIQUES PROMETHEUS
+    try:
+        logger.info("Starting Prometheus metrics server on port 9091...")
+        metrics.init_metrics_server(port=9091)
+        logger.info("✓ Metrics server ready")
+    except Exception as e:
+        logger.error(f"❌ Failed to start metrics server: {e}")
+        logger.warning("⚠️  Continuing without metrics")
 
     # Créer le serveur
     server = AudioSocketServer()
