@@ -385,6 +385,73 @@ class CallHandler:
 
         return False
 
+    def _detect_problem_type(self, user_text: str) -> str:
+        """
+        Détecte intelligemment le type de problème (internet ou mobile/téléphone)
+        en analysant les mots-clés spécifiques du client
+
+        Args:
+            user_text: Texte dit par l'utilisateur
+
+        Returns:
+            "internet" ou "mobile"
+
+        Exemples:
+            "ma connexion wifi ne marche pas" → "internet"
+            "ma ligne téléphone est coupée" → "mobile"
+            "j'ai pas de réseau" → "mobile"
+        """
+        text_lower = user_text.lower()
+
+        # Mots-clés INTERNET (connexion, débit, navigation)
+        internet_keywords = [
+            # Connexion générale
+            'internet', 'connexion', 'wifi', 'wi-fi', 'réseau wifi',
+            # Équipement
+            'box', 'modem', 'routeur', 'fibre', 'adsl',
+            # Problèmes connexion
+            'déconnecté', 'pas de connexion', 'connexion lente', 'débit',
+            'coupure internet', 'plus internet', "pas d'internet",
+            # Navigation
+            'navigateur', 'site web', 'page web', 'youtube', 'streaming',
+            'téléchargement', 'upload', 'download',
+            # Diagnostic
+            'voyant rouge', 'voyant orange', 'led rouge', 'lumière rouge'
+        ]
+
+        # Mots-clés MOBILE/TÉLÉPHONE (voix, appel, ligne)
+        mobile_keywords = [
+            # Téléphone fixe
+            'téléphone', 'ligne', 'ligne fixe', 'fixe', 'téléphonie',
+            # Problèmes voix
+            'voix', 'voix coupée', 'coupure voix', 'grésille', 'grésillements',
+            'parasite', 'écho', 'crachotements',
+            # Appels
+            'appel', 'appeler', 'communication', 'sonnerie', 'tonalité',
+            "pas de tonalité", 'décrocher',
+            # Mobile
+            'mobile', 'portable', 'smartphone', 'téléphone portable',
+            'réseau mobile', '4g', '5g', 'forfait', 'data mobile',
+            # Problèmes réseau mobile
+            'pas de réseau', 'aucun réseau', 'réseau faible', 'signal faible'
+        ]
+
+        # Compter les correspondances
+        internet_score = sum(1 for keyword in internet_keywords if keyword in text_lower)
+        mobile_score = sum(1 for keyword in mobile_keywords if keyword in text_lower)
+
+        # Décision basée sur le score
+        if internet_score > mobile_score:
+            logger.info(f"[{self.call_id}] Problem type detected: INTERNET (score: {internet_score} vs {mobile_score})")
+            return "internet"
+        elif mobile_score > internet_score:
+            logger.info(f"[{self.call_id}] Problem type detected: MOBILE (score: {mobile_score} vs {internet_score})")
+            return "mobile"
+        else:
+            # Égalité ou aucun mot-clé → Par défaut INTERNET (plus fréquent)
+            logger.info(f"[{self.call_id}] Problem type unclear (scores equal: {internet_score}), defaulting to INTERNET")
+            return "internet"
+
     def _filter_critical_words(self, text: str) -> str:
         """
         Filtre les mots critiques/sensibles du texte pour éviter mauvaises interprétations
@@ -969,9 +1036,11 @@ class CallHandler:
                 self.state = ConversationState.DIAGNOSTIC
 
             elif self.state == ConversationState.DIAGNOSTIC:
-                # Déterminer le type de problème
-                problem_type = "internet" if "internet" in user_text.lower() else "mobile"
+                # Déterminer le type de problème avec détection intelligente
+                problem_type = self._detect_problem_type(user_text)
                 self.context['problem_type'] = problem_type
+
+                logger.info(f"[{self.call_id}] User described problem: '{user_text[:100]}...' → {problem_type.upper()}")
 
                 # Proposer la solution avec WARNING pour Internet
                 if problem_type == "internet":
