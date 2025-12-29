@@ -114,7 +114,8 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
             - problem_type (str): "internet" ou "mobile"
             - status (str): "resolved", "transferred", "failed"
             - sentiment (str): "positive", "neutral", "negative"
-            - summary (str): Résumé de l'appel
+            - summary (str): Résumé de l'appel (généré par LLM)
+            - transcript (str): Transcription complète de la conversation
             - duration_seconds (int): Durée en secondes
             - tag (str): Tag de classification (ex: "FIBRE_SYNCHRO")
             - severity (str): Sévérité (LOW, MEDIUM, HIGH)
@@ -130,6 +131,7 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
         ...     'status': 'resolved',
         ...     'sentiment': 'positive',
         ...     'summary': 'Problème résolu en redémarrant la box',
+        ...     'transcript': 'Bonjour, j\'ai des coupures internet...',
         ...     'duration_seconds': 120,
         ...     'tag': 'FIBRE_SYNCHRO',
         ...     'severity': 'MEDIUM'
@@ -151,12 +153,13 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
                     status,
                     sentiment,
                     summary,
+                    transcript,
                     duration_seconds,
                     tag,
                     severity,
                     created_at
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                 RETURNING id
                 """,
                 call_data['call_uuid'],
@@ -165,6 +168,7 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
                 call_data.get('status', 'unknown'),
                 call_data.get('sentiment', 'neutral'),
                 call_data.get('summary', 'Aucun résumé disponible'),
+                call_data.get('transcript', 'Aucune transcription disponible'),
                 call_data.get('duration_seconds', 0),
                 call_data.get('tag', 'UNKNOWN'),
                 call_data.get('severity', 'MEDIUM'),
