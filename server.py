@@ -1322,6 +1322,24 @@ class AudioSocketServer:
                 await writer.wait_closed()
                 return
 
+            # Rejeter les requêtes HTTP/HTTPS (scans de sécurité, bots)
+            try:
+                first_bytes_str = identifier_bytes[:10].decode('utf-8', errors='ignore')
+                if first_bytes_str.startswith(('GET ', 'POST', 'HEAD', 'PUT', 'DELETE', 'OPTIONS', 'PATCH')):
+                    logger.warning(f"Rejected HTTP request from scanner: {first_bytes_str[:50]}")
+                    writer.close()
+                    await writer.wait_closed()
+                    return
+            except:
+                pass  # Not HTTP, continue
+
+            # Rejeter les handshakes TLS/SSL (HTTPS scans)
+            if len(identifier_bytes) >= 3 and identifier_bytes[0] == 0x16 and identifier_bytes[1] == 0x03:
+                logger.warning(f"Rejected TLS/SSL handshake from scanner")
+                writer.close()
+                await writer.wait_closed()
+                return
+
             # Parser l'identifiant selon le protocole AudioSocket
             logger.info(f"Handshake bytes (first 20): {identifier_bytes[:20].hex()}")
 

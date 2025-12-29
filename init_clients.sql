@@ -2,7 +2,7 @@
 
 -- Table: clients
 CREATE TABLE IF NOT EXISTS clients (
-    phone_number VARCHAR(20) PRIMARY KEY,
+    phone_number VARCHAR(50) PRIMARY KEY,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     box_model VARCHAR(50),
