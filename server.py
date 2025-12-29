@@ -14,6 +14,7 @@ import os
 import struct
 import time
 import hashlib
+import random
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, List
@@ -872,9 +873,9 @@ class CallHandler:
                     ticket = pending_tickets[0]  # Premier ticket en attente
                     problem_type_fr = "connexion" if ticket['problem_type'] == "internet" else "mobile"
 
-                    # Utiliser cache + génération ciblée
-                    await self._say("greet")  # Cache : "Bonjour"
-                    await self._say_smart(
+                    # ARCHITECTURE HYBRIDE: Cache joué immédiatement, génération en arrière-plan
+                    await self._say_hybrid(
+                        "greet",  # Cache joué instantanément
                         f"{client_info['first_name']} {client_info['last_name']}, je vois un ticket ouvert concernant votre {problem_type_fr}. Est-ce à ce sujet ?"
                     )
                     logger.info(f"[{self.call_id}] Ticket verification: {ticket['id']} ({ticket['problem_type']})")
@@ -885,9 +886,10 @@ class CallHandler:
 
                 else:
                     # Pas de ticket en attente, message personnalisé avec cache
-                    await self._say("greet")  # Cache : "Bonjour"
-                    await self._say_smart(f"{client_info['first_name']} {client_info['last_name']}")
-                    await self._say("welcome")  # Cache : "bienvenue au SAV Wouippleul..."
+                    await self._say_hybrid(
+                        "greet",  # Cache : "Bonjour" joué instantanément
+                        f"{client_info['first_name']} {client_info['last_name']}, comment puis-je vous aider aujourd'hui ?"
+                    )
                     logger.info(f"[{self.call_id}] Personalized welcome (no pending tickets)")
                     self.state = ConversationState.DIAGNOSTIC
 
@@ -898,11 +900,11 @@ class CallHandler:
                     ticket = pending_tickets[0]
                     problem_type_fr = "connexion" if ticket['problem_type'] == "internet" else "mobile"
 
-                    await self._say("greet")  # Cache : "Bonjour"
-                    await self._say_smart(
-                        f"je vois que vous avez déjà appelé {len(client_history)} fois. "
-                        f"Je suis Eko, votre assistant virtuel. "
-                        f"Vous avez un ticket ouvert concernant votre {problem_type_fr}. Est-ce à ce sujet ?"
+                    # ARCHITECTURE HYBRIDE
+                    await self._say_hybrid(
+                        "greet",
+                        f"Je vois que vous avez déjà appelé {len(client_history)} fois. "
+                        f"Je suis Eko. Vous avez un ticket ouvert concernant votre {problem_type_fr}. Est-ce à ce sujet ?"
                     )
                     logger.info(f"[{self.call_id}] Returning client with pending ticket: {ticket['id']}")
 
@@ -911,11 +913,10 @@ class CallHandler:
                     self.state = ConversationState.TICKET_VERIFICATION
 
                 else:
-                    # Client récurrent sans ticket en attente
-                    await self._say("greet")  # Cache : "Bonjour"
-                    await self._say_smart(
-                        f"je vois que vous avez déjà appelé {len(client_history)} fois. "
-                        f"Je suis Eko, votre assistant virtuel. Comment puis-je vous aider aujourd'hui ?"
+                    # Client récurrent sans ticket en attente - ARCHITECTURE HYBRIDE
+                    await self._say_hybrid(
+                        "greet",
+                        f"Je vous reconnais, vous avez déjà appelé {len(client_history)} fois. Je suis Eko. Comment puis-je vous aider ?"
                     )
                     logger.info(f"[{self.call_id}] Returning client welcome ({len(client_history)} previous calls)")
                     self.state = ConversationState.DIAGNOSTIC
@@ -1048,6 +1049,10 @@ class CallHandler:
                 self.state = ConversationState.DIAGNOSTIC
 
             elif self.state == ConversationState.DIAGNOSTIC:
+                # FILLER pour masquer latence de détection (joué AVANT l'analyse)
+                filler_phrases = ["filler_hum", "filler_ok", "filler_let_me_see"]
+                await self._say(random.choice(filler_phrases))
+
                 # Déterminer le type de problème avec détection intelligente
                 problem_type = self._detect_problem_type(user_text)
                 self.context['problem_type'] = problem_type
@@ -1076,11 +1081,23 @@ class CallHandler:
                 self.state = ConversationState.VERIFICATION
 
             elif self.state == ConversationState.VERIFICATION:
-                # Vérifier si ça marche (détection améliorée)
-                user_lower = user_text.lower()
+                # Vérifier si ça marche
+                if any(word in user_text.lower() for word in ["oui", "marche", "fonctionne", "ok", "bien"]):
+                    # Problème résolu - PERSONNALISER la félicitation avec LLM
+                    client_info = self.context.get('client_info')
+                    if client_info and client_info.get('first_name'):
+                        # Générer une félicitation courte et personnalisée
+                        congratulation_prompt = (
+                            f"Le client {client_info['first_name']} a résolu son problème. "
+                            f"Génère UNE SEULE phrase très courte (max 10 mots) pour le féliciter chaleureusement. "
+                            f"Sois naturel et amical."
+                        )
+                        congratulation = await self._ask_llm("", congratulation_prompt)
 
-                if any(word in user_lower for word in ["oui", "marche", "fonctionne", "ok", "bien", "parfait", "résolu", "c'est bon", "ça marche"]):
-                    # Problème résolu
+                        # ARCHITECTURE HYBRIDE: Filler + félicitation personnalisée
+                        await self._say_hybrid("filler_ok", congratulation)
+
+                    # Finir avec au revoir du cache
                     await self._say("goodbye")
                     self.is_active = False
 
@@ -1287,6 +1304,54 @@ class CallHandler:
             logger.error(f"[{self.call_id}] Error in _say_smart: {e}")
             # Fallback : utiliser _say_dynamic directement
             await self._say_dynamic(text)
+
+    async def _say_hybrid(self, cache_key: str, personalized_text: str):
+        """
+        Architecture HYBRIDE pour masquer la latence LLM/TTS
+
+        Joue une phrase du cache immédiatement PENDANT que la phrase
+        personnalisée est générée en arrière-plan.
+
+        Args:
+            cache_key: Clé de la phrase cache à jouer immédiatement (ex: "greet", "filler_hum")
+            personalized_text: Texte personnalisé à générer avec ElevenLabs
+
+        Workflow:
+            1. Lance génération TTS en tâche de fond (non-bloquant)
+            2. Joue phrase cache immédiatement (0ms latence perçue)
+            3. Attend fin génération
+            4. Joue réponse personnalisée
+
+        Exemple:
+            await self._say_hybrid("greet", f"Monsieur {last_name}, je vois votre ticket")
+            → Client entend "Bonjour" IMMÉDIATEMENT
+            → Puis "Monsieur Dupont, je vois votre ticket" après génération
+        """
+        try:
+            # 1. Lancer la génération en arrière-plan (Task asynchrone)
+            generation_task = asyncio.create_task(self._generate_audio(personalized_text))
+
+            # 2. Jouer le cache IMMÉDIATEMENT (masque la latence)
+            await self._say(cache_key)
+            logger.info(f"[{self.call_id}] HYBRID: Cache '{cache_key}' played, waiting for generation...")
+
+            # 3. Attendre que la génération soit prête
+            await generation_task
+
+            logger.info(f"[{self.call_id}] HYBRID: Personalized audio ready and played")
+
+        except Exception as e:
+            logger.error(f"[{self.call_id}] Error in _say_hybrid: {e}")
+            # Fallback: jouer au moins le cache
+            await self._say(cache_key)
+
+    async def _generate_audio(self, text: str):
+        """
+        Génère et joue de l'audio avec ElevenLabs (utilisé par _say_hybrid)
+        Contrairement à _say_dynamic, cette fonction est conçue pour être appelée
+        en tâche de fond.
+        """
+        await self._say_dynamic(text)
 
     async def _say_dynamic(self, text: str):
         """Version Optimisée : Streaming Temps Réel + Modèle Turbo"""

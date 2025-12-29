@@ -94,8 +94,14 @@ CACHED_PHRASES = {
     # --- Confirmations courtes ---
     "ok": "D'accord.",
     "wait": "Un instant s'il vous plaît.",
+
+    # --- Fillers pour masquer latence ---
+    "filler_hum": "Hum, laissez-moi regarder...",
+    "filler_ok": "Très bien, je note...",
+    "filler_one_moment": "Un instant s'il vous plaît...",
     "filler_checking": "Je vérifie cela.",
     "filler_processing": "Je traite votre demande.",
+    "filler_let_me_see": "Laissez-moi voir ça...",
 
     # --- Relances ---
     "still_there_gentle": "Êtes-vous toujours là ?",
