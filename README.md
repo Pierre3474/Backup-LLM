@@ -1,4 +1,4 @@
-# 🤖 Voicebot SAV Wipple - Intelligence Artificielle Conversationnelle
+# 🤖 Voicebot SAV- Intelligence Artificielle Conversationnelle
 
 Système de **voicebot IA** entièrement automatisé pour le support technique téléphonique. Gère jusqu'à **20 appels simultanés** avec reconnaissance vocale, compréhension naturelle du langage et synthèse vocale ultra-rapide.
 
@@ -31,7 +31,7 @@ Système de **voicebot IA** entièrement automatisé pour le support technique t
 
 ### Qu'est-ce que le Voicebot ?
 
-Le **Voicebot SAV Wipple** est un **assistant vocal intelligent** qui répond automatiquement aux appels téléphoniques du support technique. Il :
+Le **Voicebot SAV  ** est un **assistant vocal intelligent** qui répond automatiquement aux appels téléphoniques du support technique. Il :
 
 - ✅ **Comprend** le problème du client (reconnaissance vocale Deepgram)
 - ✅ **Détecte** automatiquement si c'est un problème Internet ou Téléphone
@@ -336,7 +336,7 @@ elif client:
     await _say("welcome")
 
 else:
-    # "Bonjour, bienvenue au SAV Wipple. Je suis Eko..."
+    # "Bonjour, bienvenue au SAV  . Je suis Eko..."
     await _say("greet")
     await _say("welcome")
 ```
@@ -475,7 +475,7 @@ docker compose exec -T postgres-tickets psql -U voicebot -d db_tickets < migrati
 
 ```
 greet.raw                    # "Bonjour"
-welcome.raw                  # "Bienvenue au SAV Wipple..."
+welcome.raw                  # "Bienvenue au SAV  ..."
 ask_identity.raw             # "Puis-je avoir votre nom ?"
 ask_email.raw                # "Quelle est votre adresse email ?"
 goodbye.raw                  # "Merci d'avoir appelé, au revoir"
@@ -897,10 +897,10 @@ Pour toute question technique :
 
 ## 📝 License
 
-Proprietary - Wipple SAV © 2025
+Proprietary -  URTADO Pierre © 2025
 
 ---
 
 **Dernière mise à jour** : 29 décembre 2025
 **Version** : 2.0.0
-**Auteur** : Système IA Conversationnel Wipple
+**Auteur** : Système IA Conversationnel
