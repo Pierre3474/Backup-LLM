@@ -21,8 +21,9 @@ Système de **voicebot IA** entièrement automatisé pour le support technique t
 8. [Base de données](#-base-de-données)
 9. [Optimisations](#-optimisations)
 10. [Dashboard](#-dashboard)
-11. [Sécurité](#-sécurité)
-12. [Maintenance](#-maintenance)
+11. [Monitoring ROI](#-monitoring-roi---grafana--prometheus)
+12. [Sécurité](#-sécurité)
+13. [Maintenance](#-maintenance)
 
 ---
 
@@ -566,6 +567,167 @@ Interface web Streamlit sur **port 8501** (sécurisé par IP).
 docker compose logs dashboard
 
 # Accès : http://51.77.200.59:8501
+```
+
+---
+
+## 📈 Monitoring ROI - Grafana & Prometheus
+
+**Système de métriques en temps réel** pour mesurer le **retour sur investissement (ROI)** du voicebot et suivre les **KPIs business** compréhensibles par les gestionnaires d'équipe.
+
+### Accès aux Dashboards
+
+- 🎯 **Grafana** : http://51.77.200.59:3000
+  - **Username** : `admin`
+  - **Password** : `voicebot2024`
+- 📊 **Prometheus** : http://51.77.200.59:9092
+
+### Dashboard "Voicebot SAV - ROI & KPIs Business"
+
+Le dashboard principal affiche **10 métriques clés** pour mesurer la performance et la rentabilité :
+
+#### 💰 Métriques Financières
+
+1. **Coût Moyen par Appel** : Calcule automatiquement le coût total (ElevenLabs + Deepgram + Groq) divisé par le nombre d'appels
+   - ElevenLabs TTS : 0.11€/1000 caractères
+   - Deepgram STT : 0.26€/heure
+   - Groq LLM : 0.59€/1M tokens
+
+2. **Économies vs Agent Humain** : Compare le coût du voicebot au coût d'un agent humain (15€/appel en moyenne)
+   - Exemple : 100 appels/jour × 15€ = 1500€ économisés vs ~50€ de coûts API
+
+3. **Répartition des Coûts API** : Graphique temps réel montrant la proportion de chaque service IA
+
+#### ✅ Métriques de Performance
+
+4. **Taux de Résolution Automatique** : % d'appels résolus sans transfert vers technicien
+   - 🟢 Vert : >70% (excellent)
+   - 🟡 Jaune : 50-70% (bon)
+   - 🔴 Rouge : <50% (à améliorer)
+
+5. **Optimisation Cache TTS** : % de phrases dites depuis le cache vs génération API
+   - Cache hit >50% = réduction significative des coûts ElevenLabs
+
+6. **Temps Moyen de Traitement** : Durée moyenne des appels en secondes
+   - 🟢 Vert : <120s (rapide)
+   - 🟡 Jaune : 120-300s (normal)
+   - 🔴 Rouge : >300s (lent)
+
+#### 📊 Métriques d'Activité
+
+7. **Volume d'Appels** : Nombre d'appels traités par heure (graphique temps réel)
+
+8. **Distribution des Problèmes** : Répartition Internet vs Mobile/Téléphone (camembert)
+
+9. **Satisfaction Client** : Analyse de sentiment automatique
+   - 😊 Positif (vert) / 😐 Neutre (jaune) / 😡 Négatif (rouge)
+
+10. **Tickets par Sévérité** : Volume de tickets par niveau (LOW, MEDIUM, HIGH, CRITICAL)
+
+### Architecture Monitoring
+
+```
+┌───────────────────┐
+│  Voicebot Server  │
+│  Port 9091        │──▶ Expose métriques Prometheus
+└───────────────────┘
+         │
+         │ scrape toutes les 15s
+         ▼
+┌───────────────────┐
+│   Prometheus      │
+│   Port 9092       │──▶ Stocke métriques (30 jours)
+└───────────────────┘
+         │
+         │ requêtes PromQL
+         ▼
+┌───────────────────┐
+│     Grafana       │
+│     Port 3000     │──▶ Visualisation dashboards
+└───────────────────┘
+```
+
+### Métriques Collectées
+
+Le fichier `metrics.py` exporte **15 métriques principales** :
+
+#### Appels & Business
+- `voicebot_calls_total` : Nombre total d'appels par status et problem_type
+- `voicebot_call_duration_seconds` : Durée des appels (histogram)
+- `voicebot_client_sentiment_total` : Sentiment client (positive/neutral/negative)
+- `voicebot_tickets_created_total` : Tickets créés par sévérité et tag
+
+#### Coûts API
+- `voicebot_elevenlabs_requests_total` : Requêtes TTS (cache_hit vs api_call)
+- `voicebot_elevenlabs_characters_total` : Caractères générés (pour calcul coût)
+- `voicebot_deepgram_requests_total` : Requêtes STT
+- `voicebot_deepgram_audio_seconds_total` : Durée audio transcrite (pour calcul coût)
+- `voicebot_groq_requests_total` : Requêtes LLM
+- `voicebot_groq_tokens_input_total` : Tokens input LLM (pour calcul coût)
+- `voicebot_groq_tokens_output_total` : Tokens output LLM (pour calcul coût)
+
+#### Performance Technique
+- `voicebot_tts_response_seconds` : Temps de réponse TTS (cache vs API)
+- `voicebot_stt_response_seconds` : Temps de transcription Deepgram
+- `voicebot_llm_response_seconds` : Temps de réponse Groq
+- `voicebot_errors_total` : Erreurs système par type et composant
+
+### Formules ROI
+
+Les requêtes PromQL calculées automatiquement dans Grafana :
+
+```promql
+# Coût par appel
+(
+  (voicebot_elevenlabs_characters_total * 0.00011) +
+  (voicebot_deepgram_audio_seconds_total * 0.0043) +
+  ((voicebot_groq_tokens_input_total + voicebot_groq_tokens_output_total) * 0.00000059)
+) / voicebot_calls_total
+
+# Économies cache TTS (%)
+(voicebot_elevenlabs_requests_total{type="cache_hit"} /
+ (voicebot_elevenlabs_requests_total{type="cache_hit"} +
+  voicebot_elevenlabs_requests_total{type="api_call"})) * 100
+
+# Taux de résolution (%)
+(voicebot_calls_total{status="resolved"} / sum(voicebot_calls_total)) * 100
+
+# Économies totales vs agent humain
+(voicebot_calls_total * 15) - (coût total API)
+```
+
+### Configuration Firewall
+
+```bash
+# Port 3000 (Grafana) - SEULEMENT IPs Admin/Gestionnaires
+iptables -I DOCKER-USER -p tcp --dport 3000 -s 90.XXX.XXX.XXX -j ACCEPT
+iptables -I DOCKER-USER -p tcp --dport 3000 -j DROP
+
+# Port 9092 (Prometheus) - SEULEMENT localhost + IPs Admin
+iptables -I DOCKER-USER -p tcp --dport 9092 -s 90.XXX.XXX.XXX -j ACCEPT
+iptables -I DOCKER-USER -p tcp --dport 9092 -j DROP
+
+# Port 9091 (Métriques) - SEULEMENT Prometheus (interne Docker)
+# Pas d'accès externe nécessaire
+```
+
+### Commandes Utiles
+
+```bash
+# Vérifier les métriques brutes
+curl http://localhost:9091/metrics
+
+# Logs Prometheus
+docker compose logs -f prometheus
+
+# Logs Grafana
+docker compose logs -f grafana
+
+# Restart monitoring stack
+docker compose restart prometheus grafana
+
+# Rebuild si modification dashboards
+docker compose down && docker compose up -d
 ```
 
 ---
