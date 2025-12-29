@@ -111,13 +111,17 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
         call_data: Dictionnaire contenant les données de l'appel
             - call_uuid (str): UUID de l'appel
             - phone_number (str): Numéro de téléphone
+            - client_name (str): Nom complet du client (prénom + nom)
+            - client_email (str): Email du client
             - problem_type (str): "internet" ou "mobile"
             - status (str): "resolved", "transferred", "failed"
             - sentiment (str): "positive", "neutral", "negative"
-            - summary (str): Résumé de l'appel
+            - summary (str): Résumé de l'appel (généré par LLM, filtré)
             - duration_seconds (int): Durée en secondes
             - tag (str): Tag de classification (ex: "FIBRE_SYNCHRO")
             - severity (str): Sévérité (LOW, MEDIUM, HIGH)
+            - call_date (date): Date de l'appel (JJ/MM/AAAA)
+            - call_time (time): Heure de l'appel (HH:MM:SS)
 
     Returns:
         ID du ticket créé ou None si erreur
@@ -126,13 +130,17 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
         >>> await create_ticket({
         ...     'call_uuid': 'a1b2c3d4',
         ...     'phone_number': '0612345678',
+        ...     'client_name': 'Pierre Dupont',
+        ...     'client_email': 'pierre.dupont@example.com',
         ...     'problem_type': 'internet',
         ...     'status': 'resolved',
         ...     'sentiment': 'positive',
         ...     'summary': 'Problème résolu en redémarrant la box',
         ...     'duration_seconds': 120,
         ...     'tag': 'FIBRE_SYNCHRO',
-        ...     'severity': 'MEDIUM'
+        ...     'severity': 'MEDIUM',
+        ...     'call_date': date(2025, 12, 29),
+        ...     'call_time': time(14, 30, 0)
         ... })
         42
     """
@@ -147,6 +155,8 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
                 INSERT INTO tickets (
                     call_uuid,
                     phone_number,
+                    client_name,
+                    client_email,
                     problem_type,
                     status,
                     sentiment,
@@ -154,13 +164,17 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
                     duration_seconds,
                     tag,
                     severity,
+                    call_date,
+                    call_time,
                     created_at
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 RETURNING id
                 """,
                 call_data['call_uuid'],
                 call_data['phone_number'],
+                call_data.get('client_name'),  # Peut être NULL
+                call_data.get('client_email'),  # Peut être NULL
                 call_data.get('problem_type', 'unknown'),
                 call_data.get('status', 'unknown'),
                 call_data.get('sentiment', 'neutral'),
@@ -168,6 +182,8 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
                 call_data.get('duration_seconds', 0),
                 call_data.get('tag', 'UNKNOWN'),
                 call_data.get('severity', 'MEDIUM'),
+                call_data.get('call_date', datetime.now().date()),
+                call_data.get('call_time', datetime.now().time()),
                 datetime.now()
             )
 

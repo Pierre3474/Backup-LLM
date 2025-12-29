@@ -1,0 +1,15 @@
+# Configuration automatique des dashboards Grafana
+
+apiVersion: 1
+
+providers:
+  - name: 'Voicebot Dashboards'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true

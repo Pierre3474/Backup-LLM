@@ -35,6 +35,7 @@ from panoramisk import Manager as AMIManager
 import config
 from audio_utils import generate_silence, stream_and_convert_to_8khz
 import db_utils
+import metrics
 
 # Configure logging
 logging.basicConfig(
@@ -384,6 +385,120 @@ class CallHandler:
             return True
 
         return False
+
+    def _detect_problem_type(self, user_text: str) -> str:
+        """
+        Détecte intelligemment le type de problème (internet ou mobile/téléphone)
+        en analysant les mots-clés spécifiques du client
+
+        Args:
+            user_text: Texte dit par l'utilisateur
+
+        Returns:
+            "internet" ou "mobile"
+
+        Exemples:
+            "ma connexion wifi ne marche pas" → "internet"
+            "ma ligne téléphone est coupée" → "mobile"
+            "j'ai pas de réseau" → "mobile"
+        """
+        text_lower = user_text.lower()
+
+        # Mots-clés INTERNET (connexion, débit, navigation)
+        internet_keywords = [
+            # Connexion générale
+            'internet', 'connexion', 'wifi', 'wi-fi', 'réseau wifi',
+            # Équipement
+            'box', 'modem', 'routeur', 'fibre', 'adsl',
+            # Problèmes connexion
+            'déconnecté', 'pas de connexion', 'connexion lente', 'débit',
+            'coupure internet', 'plus internet', "pas d'internet",
+            # Navigation
+            'navigateur', 'site web', 'page web', 'youtube', 'streaming',
+            'téléchargement', 'upload', 'download',
+            # Diagnostic
+            'voyant rouge', 'voyant orange', 'led rouge', 'lumière rouge'
+        ]
+
+        # Mots-clés MOBILE/TÉLÉPHONE (voix, appel, ligne)
+        mobile_keywords = [
+            # Téléphone fixe
+            'téléphone', 'ligne', 'ligne fixe', 'fixe', 'téléphonie',
+            # Problèmes voix
+            'voix', 'voix coupée', 'coupure voix', 'grésille', 'grésillements',
+            'parasite', 'écho', 'crachotements',
+            # Appels
+            'appel', 'appeler', 'communication', 'sonnerie', 'tonalité',
+            "pas de tonalité", 'décrocher',
+            # Mobile
+            'mobile', 'portable', 'smartphone', 'téléphone portable',
+            'réseau mobile', '4g', '5g', 'forfait', 'data mobile',
+            # Problèmes réseau mobile
+            'pas de réseau', 'aucun réseau', 'réseau faible', 'signal faible'
+        ]
+
+        # Compter les correspondances
+        internet_score = sum(1 for keyword in internet_keywords if keyword in text_lower)
+        mobile_score = sum(1 for keyword in mobile_keywords if keyword in text_lower)
+
+        # Décision basée sur le score
+        if internet_score > mobile_score:
+            logger.info(f"[{self.call_id}] Problem type detected: INTERNET (score: {internet_score} vs {mobile_score})")
+            return "internet"
+        elif mobile_score > internet_score:
+            logger.info(f"[{self.call_id}] Problem type detected: MOBILE (score: {mobile_score} vs {internet_score})")
+            return "mobile"
+        else:
+            # Égalité ou aucun mot-clé → Par défaut INTERNET (plus fréquent)
+            logger.info(f"[{self.call_id}] Problem type unclear (scores equal: {internet_score}), defaulting to INTERNET")
+            return "internet"
+
+    def _filter_critical_words(self, text: str) -> str:
+        """
+        Filtre les mots critiques/sensibles du texte pour éviter mauvaises interprétations
+
+        Args:
+            text: Texte à filtrer (summary généré par LLM)
+
+        Returns:
+            Texte filtré sans mots critiques
+        """
+        if not text:
+            return text
+
+        # Liste de mots critiques à remplacer (insultes, propos sensibles)
+        critical_words = {
+            # Insultes courantes
+            'con': '***',
+            'connard': '***',
+            'connasse': '***',
+            'putain': '***',
+            'merde': '***',
+            'bordel': '***',
+            'enculé': '***',
+            'salope': '***',
+            'pute': '***',
+
+            # Expressions agressives
+            'va te faire': '***',
+            'nique': '***',
+            'fous-toi': '***',
+
+            # Mots sensibles business
+            'arnaque': 'pratique contestable',
+            'voleur': 'surfacturation',
+            'incompétent': 'difficulté technique',
+            'nul': 'insuffisant',
+            'pourri': 'défaillant'
+        }
+
+        filtered_text = text.lower()
+
+        # Remplacer chaque mot critique
+        for word, replacement in critical_words.items():
+            filtered_text = filtered_text.replace(word, replacement)
+
+        return filtered_text
 
     async def _get_callerid_via_ami(self, uniqueid: str) -> Optional[str]:
         """
@@ -757,12 +872,11 @@ class CallHandler:
                     ticket = pending_tickets[0]  # Premier ticket en attente
                     problem_type_fr = "connexion" if ticket['problem_type'] == "internet" else "mobile"
 
-                    welcome_with_ticket = (
-                        f"Bonjour {client_info['first_name']} {client_info['last_name']}, "
-                        f"je vois un ticket ouvert concernant votre {problem_type_fr}. "
-                        f"Est-ce à ce sujet ?"
+                    # Utiliser cache + génération ciblée
+                    await self._say("greet")  # Cache : "Bonjour"
+                    await self._say_smart(
+                        f"{client_info['first_name']} {client_info['last_name']}, je vois un ticket ouvert concernant votre {problem_type_fr}. Est-ce à ce sujet ?"
                     )
-                    await self._say_dynamic(welcome_with_ticket)
                     logger.info(f"[{self.call_id}] Ticket verification: {ticket['id']} ({ticket['problem_type']})")
 
                     # Stocker le ticket dans le contexte
@@ -770,12 +884,10 @@ class CallHandler:
                     self.state = ConversationState.TICKET_VERIFICATION
 
                 else:
-                    # Pas de ticket en attente, message personnalisé normal
-                    welcome_personalized = (
-                        f"Bonjour {client_info['first_name']} {client_info['last_name']}, "
-                        f"bienvenue au SAV Wouippleul. Comment puis-je vous aider ?"
-                    )
-                    await self._say_dynamic(welcome_personalized)
+                    # Pas de ticket en attente, message personnalisé avec cache
+                    await self._say("greet")  # Cache : "Bonjour"
+                    await self._say_smart(f"{client_info['first_name']} {client_info['last_name']}")
+                    await self._say("welcome")  # Cache : "bienvenue au SAV Wouippleul..."
                     logger.info(f"[{self.call_id}] Personalized welcome (no pending tickets)")
                     self.state = ConversationState.DIAGNOSTIC
 
@@ -786,13 +898,12 @@ class CallHandler:
                     ticket = pending_tickets[0]
                     problem_type_fr = "connexion" if ticket['problem_type'] == "internet" else "mobile"
 
-                    welcome_returning_with_ticket = (
-                        f"Bonjour, je vois que vous avez déjà appelé {len(client_history)} fois. "
+                    await self._say("greet")  # Cache : "Bonjour"
+                    await self._say_smart(
+                        f"je vois que vous avez déjà appelé {len(client_history)} fois. "
                         f"Je suis Eko, votre assistant virtuel. "
-                        f"Vous avez un ticket ouvert concernant votre {problem_type_fr}. "
-                        f"Est-ce à ce sujet ?"
+                        f"Vous avez un ticket ouvert concernant votre {problem_type_fr}. Est-ce à ce sujet ?"
                     )
-                    await self._say_dynamic(welcome_returning_with_ticket)
                     logger.info(f"[{self.call_id}] Returning client with pending ticket: {ticket['id']}")
 
                     # Stocker le ticket dans le contexte
@@ -801,26 +912,19 @@ class CallHandler:
 
                 else:
                     # Client récurrent sans ticket en attente
-                    welcome_returning = (
-                        f"Bonjour, je vois que vous avez déjà appelé {len(client_history)} fois. "
-                        f"Je suis Eko, votre assistant virtuel. "
-                        f"Comment puis-je vous aider aujourd'hui ?"
+                    await self._say("greet")  # Cache : "Bonjour"
+                    await self._say_smart(
+                        f"je vois que vous avez déjà appelé {len(client_history)} fois. "
+                        f"Je suis Eko, votre assistant virtuel. Comment puis-je vous aider aujourd'hui ?"
                     )
-                    await self._say_dynamic(welcome_returning)
                     logger.info(f"[{self.call_id}] Returning client welcome ({len(client_history)} previous calls)")
                     self.state = ConversationState.DIAGNOSTIC
 
             else:
-                # NOUVEAU CLIENT (pas d'historique, pas de fiche)
-                # Utiliser le message en cache mais CONTINUER avec un message dynamique
-                # pour garantir que "Je suis Eko" soit dit
-                welcome_new = (
-                    "Bonjour et bienvenue au service support technique de Wipple. "
-                    "Je suis Eko, votre assistant virtuel. "
-                    "Comment puis-je vous aider aujourd'hui ?"
-                )
-                await self._say_dynamic(welcome_new)
-                logger.info(f"[{self.call_id}] New client welcome")
+                # NOUVEAU CLIENT - Utiliser phrases du cache
+                await self._say("greet")     # Cache : "Bonjour"
+                await self._say("welcome")   # Cache : "bienvenue au SAV Wouippleul..."
+                logger.info(f"[{self.call_id}] New client welcome (using cache)")
                 self.state = ConversationState.DIAGNOSTIC
 
             # BOUCLE DE CONVERSATION : Garder le handler actif
@@ -933,9 +1037,11 @@ class CallHandler:
                 self.state = ConversationState.DIAGNOSTIC
 
             elif self.state == ConversationState.DIAGNOSTIC:
-                # Déterminer le type de problème
-                problem_type = "internet" if "internet" in user_text.lower() else "mobile"
+                # Déterminer le type de problème avec détection intelligente
+                problem_type = self._detect_problem_type(user_text)
                 self.context['problem_type'] = problem_type
+
+                logger.info(f"[{self.call_id}] User described problem: '{user_text[:100]}...' → {problem_type.upper()}")
 
                 # Proposer la solution avec WARNING pour Internet
                 if problem_type == "internet":
@@ -1099,6 +1205,13 @@ class CallHandler:
                 logger.warning(f"[{self.call_id}] Cache miss: {phrase_key}")
                 return
 
+            # TRACKING: Cache TTS hit (économie API)
+            try:
+                metrics.track_tts_cache_hit()
+                metrics.tts_response_time.labels(source='cache').observe(0.001)  # ~1ms pour cache
+            except Exception:
+                pass
+
             # Envoyer directement à la queue de sortie (déjà en 8kHz)
             self.is_speaking = True
             await self._send_audio(audio_data)
@@ -1107,15 +1220,73 @@ class CallHandler:
         except Exception as e:
             logger.error(f"[{self.call_id}] Error saying '{phrase_key}': {e}")
 
+    async def _say_smart(self, text: str, **variables):
+        """
+        Dit une phrase en optimisant l'utilisation du cache
+
+        Stratégie :
+        1. Si phrase courte (<30 mots) ET pas de variables → TTS dynamique
+        2. Si variables fournies → Template avec nom/prénom (pas de génération)
+        3. Sinon → Génération ElevenLabs complète
+
+        Args:
+            text: Texte à dire
+            **variables: Variables optionnelles (first_name, last_name, ticket_id, etc.)
+
+        Exemples:
+            await _say_smart("Bonjour Monsieur {last_name}")  # Utilise cache + template
+            await _say_smart("Bonjour", first_name="Pierre")   # Utilise cache
+            await _say_smart("Problème complexe détecté...")  # Génère avec ElevenLabs
+        """
+        try:
+            # Si la phrase contient des placeholders {var} mais qu'aucune variable n'est fournie
+            # on laisse tel quel et on génère
+            if '{' in text and variables:
+                # Remplacer les variables dans le texte
+                text = text.format(**variables)
+
+            # Stratégie 1 : Phrase courte générique → Utiliser cache dynamique ou générer
+            word_count = len(text.split())
+
+            if word_count <= 30 and not variables:
+                # Phrase courte, on peut utiliser le cache dynamique ou générer
+                logger.info(f"[{self.call_id}] Short phrase ({word_count} words), using dynamic TTS")
+                await self._say_dynamic(text)
+                return
+
+            # Stratégie 2 : Phrase avec variables → On a déjà formaté, générer
+            if variables:
+                logger.info(f"[{self.call_id}] Personalized phrase with variables, generating TTS")
+                await self._say_dynamic(text)
+                return
+
+            # Stratégie 3 : Phrase longue générique → Générer
+            logger.info(f"[{self.call_id}] Long generic phrase ({word_count} words), generating TTS")
+            await self._say_dynamic(text)
+
+        except Exception as e:
+            logger.error(f"[{self.call_id}] Error in _say_smart: {e}")
+            # Fallback : utiliser _say_dynamic directement
+            await self._say_dynamic(text)
+
     async def _say_dynamic(self, text: str):
         """Version Optimisée : Streaming Temps Réel + Modèle Turbo"""
         try:
             self.is_speaking = True
+            start_time = time.time()
 
             # 1. Cache Check
             cached_audio = self.audio_cache.get_dynamic(text)
             if cached_audio:
                 logger.info(f"[{self.call_id}] Cache HIT dynamic")
+
+                # TRACKING: Cache dynamique hit
+                try:
+                    metrics.track_tts_cache_hit()
+                    metrics.tts_response_time.labels(source='cache').observe(time.time() - start_time)
+                except Exception:
+                    pass
+
                 await self._send_audio(cached_audio)
                 self.is_speaking = False
                 return
@@ -1130,24 +1301,31 @@ class CallHandler:
                 stream=True,
                 output_format="mp3_44100_128"
             )
-            
+
             # 3. Conversion à la volée (Pipe)
             pcm_stream = stream_and_convert_to_8khz(audio_stream_iterator)
 
             # 4. Envoi immédiat à Asterisk
             full_audio_for_cache = bytearray()
-            
+
             for chunk in pcm_stream:
-                if not self.output_queue and not self.is_speaking: 
+                if not self.output_queue and not self.is_speaking:
                     break # Stop si interruption
-                    
+
                 self.output_queue.append(chunk)
                 full_audio_for_cache.extend(chunk)
 
             # 5. Mise en cache
             if len(full_audio_for_cache) > 0:
                 self.audio_cache.set_dynamic(text, bytes(full_audio_for_cache))
-            
+
+            # TRACKING: Appel API ElevenLabs
+            try:
+                response_time = time.time() - start_time
+                metrics.track_tts_api_call(characters=len(text), response_time=response_time)
+            except Exception:
+                pass
+
             self.is_speaking = False
 
         except Exception as e:
@@ -1243,23 +1421,73 @@ class CallHandler:
             # ANALYSE DE SENTIMENT VIA LLM (amélioration)
             sentiment = await self._analyze_sentiment_llm(summary)
 
+            # Filtrer les mots critiques du summary pour éviter mauvaises interprétations
+            filtered_summary = self._filter_critical_words(summary)
+
+            # Récupérer infos client depuis le contexte
+            client_info = self.context.get('client_info', {})
+            client_name = None
+            client_email = None
+
+            if client_info:
+                first_name = client_info.get('first_name', '')
+                last_name = client_info.get('last_name', '')
+                client_name = f"{first_name} {last_name}".strip() or None
+
+            # Récupérer email depuis user_info si renseigné
+            user_info = self.context.get('user_info', '')
+            if '@' in user_info:
+                # Extraire l'email du user_info
+                import re
+                email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', user_info)
+                if email_match:
+                    client_email = email_match.group(0)
+
+            # Date et heure de l'appel
+            now = datetime.now()
+            call_date = now.date()
+            call_time = now.time()
+
             # Préparer les données du ticket
             ticket_data = {
                 'call_uuid': self.call_id,
                 'phone_number': self.context.get('phone_number', self.call_id),  # Fallback sur call_id
+                'client_name': client_name,
+                'client_email': client_email,
                 'problem_type': self.context.get('problem_type', 'unknown'),
                 'status': status,
                 'sentiment': sentiment,
-                'summary': summary,
+                'summary': filtered_summary,  # Summary filtré sans mots critiques
                 'duration_seconds': call_duration,
                 'tag': classification['tag'],
-                'severity': classification['severity']
+                'severity': classification['severity'],
+                'call_date': call_date,
+                'call_time': call_time
             }
 
             # Sauvegarder dans la DB
             ticket_id = await db_utils.create_ticket(ticket_data)
             if ticket_id:
                 logger.info(f"[{self.call_id}] Ticket saved: {ticket_id} (tag: {classification['tag']}, sentiment: {sentiment})")
+
+                # TRACKING MÉTRIQUES PROMETHEUS
+                try:
+                    # Enregistrer l'appel complété
+                    metrics.track_call_completed(
+                        status=status,
+                        problem_type=self.context.get('problem_type', 'unknown'),
+                        duration=call_duration,
+                        sentiment=sentiment
+                    )
+
+                    # Enregistrer le ticket créé
+                    metrics.track_ticket_created(
+                        severity=classification['severity'],
+                        tag=classification['tag'],
+                        problem_type=self.context.get('problem_type', 'unknown')
+                    )
+                except Exception as e:
+                    logger.error(f"[{self.call_id}] Failed to track metrics: {e}")
             else:
                 logger.warning(f"[{self.call_id}] Failed to save ticket")
 
@@ -1307,6 +1535,24 @@ class AudioSocketServer:
 
             if len(identifier_bytes) == 0:
                 logger.error("Invalid AudioSocket handshake: no data")
+                writer.close()
+                await writer.wait_closed()
+                return
+
+            # Rejeter les requêtes HTTP/HTTPS (scans de sécurité, bots)
+            try:
+                first_bytes_str = identifier_bytes[:10].decode('utf-8', errors='ignore')
+                if first_bytes_str.startswith(('GET ', 'POST', 'HEAD', 'PUT', 'DELETE', 'OPTIONS', 'PATCH')):
+                    logger.warning(f"Rejected HTTP request from scanner: {first_bytes_str[:50]}")
+                    writer.close()
+                    await writer.wait_closed()
+                    return
+            except:
+                pass  # Not HTTP, continue
+
+            # Rejeter les handshakes TLS/SSL (HTTPS scans)
+            if len(identifier_bytes) >= 3 and identifier_bytes[0] == 0x16 and identifier_bytes[1] == 0x03:
+                logger.warning(f"Rejected TLS/SSL handshake from scanner")
                 writer.close()
                 await writer.wait_closed()
                 return
@@ -1422,6 +1668,15 @@ async def main():
     except Exception as e:
         logger.error(f"❌ Failed to initialize database: {e}")
         logger.warning("⚠️  Continuing without database (tickets won't be saved)")
+
+    # INITIALISER LE SERVEUR DE MÉTRIQUES PROMETHEUS
+    try:
+        logger.info("Starting Prometheus metrics server on port 9091...")
+        metrics.init_metrics_server(port=9091)
+        logger.info("✓ Metrics server ready")
+    except Exception as e:
+        logger.error(f"❌ Failed to start metrics server: {e}")
+        logger.warning("⚠️  Continuing without metrics")
 
     # Créer le serveur
     server = AudioSocketServer()
