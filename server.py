@@ -307,7 +307,6 @@ class CallHandler:
         # État de la conversation
         self.state = ConversationState.INIT
         self.context: Dict = {}
-        self.transcript_buffer: List[str] = []  # Stocke toutes les transcriptions utilisateur
 
         # Stocker le numéro de téléphone dans le contexte s'il est disponible
         if phone_number:
@@ -385,6 +384,53 @@ class CallHandler:
             return True
 
         return False
+
+    def _filter_critical_words(self, text: str) -> str:
+        """
+        Filtre les mots critiques/sensibles du texte pour éviter mauvaises interprétations
+
+        Args:
+            text: Texte à filtrer (summary généré par LLM)
+
+        Returns:
+            Texte filtré sans mots critiques
+        """
+        if not text:
+            return text
+
+        # Liste de mots critiques à remplacer (insultes, propos sensibles)
+        critical_words = {
+            # Insultes courantes
+            'con': '***',
+            'connard': '***',
+            'connasse': '***',
+            'putain': '***',
+            'merde': '***',
+            'bordel': '***',
+            'enculé': '***',
+            'salope': '***',
+            'pute': '***',
+
+            # Expressions agressives
+            'va te faire': '***',
+            'nique': '***',
+            'fous-toi': '***',
+
+            # Mots sensibles business
+            'arnaque': 'pratique contestable',
+            'voleur': 'surfacturation',
+            'incompétent': 'difficulté technique',
+            'nul': 'insuffisant',
+            'pourri': 'défaillant'
+        }
+
+        filtered_text = text.lower()
+
+        # Remplacer chaque mot critique
+        for word, replacement in critical_words.items():
+            filtered_text = filtered_text.replace(word, replacement)
+
+        return filtered_text
 
     async def _get_callerid_via_ami(self, uniqueid: str) -> Optional[str]:
         """
@@ -638,9 +684,6 @@ class CallHandler:
                                 logger.info(f"[{self.call_id}] User interrupted (final): {sentence}")
                                 self.last_user_speech_time = time.time()
 
-                                # Sauvegarder la transcription
-                                self.transcript_buffer.append(f"[Interruption] {sentence}")
-
                                 # ANALYSE DE SENTIMENT TEMPS RÉEL
                                 anger_detected = self._detect_anger(sentence)
 
@@ -671,9 +714,6 @@ class CallHandler:
                         elif result.is_final:
                             logger.info(f"[{self.call_id}] User: {sentence}")
                             self.last_user_speech_time = time.time()
-
-                            # Sauvegarder la transcription
-                            self.transcript_buffer.append(sentence)
 
                             # ANALYSE DE SENTIMENT TEMPS RÉEL
                             anger_detected = self._detect_anger(sentence)
@@ -1250,21 +1290,48 @@ class CallHandler:
             # ANALYSE DE SENTIMENT VIA LLM (amélioration)
             sentiment = await self._analyze_sentiment_llm(summary)
 
-            # Générer la transcription complète
-            full_transcript = "\n".join(self.transcript_buffer) if self.transcript_buffer else "Aucune transcription disponible"
+            # Filtrer les mots critiques du summary pour éviter mauvaises interprétations
+            filtered_summary = self._filter_critical_words(summary)
+
+            # Récupérer infos client depuis le contexte
+            client_info = self.context.get('client_info', {})
+            client_name = None
+            client_email = None
+
+            if client_info:
+                first_name = client_info.get('first_name', '')
+                last_name = client_info.get('last_name', '')
+                client_name = f"{first_name} {last_name}".strip() or None
+
+            # Récupérer email depuis user_info si renseigné
+            user_info = self.context.get('user_info', '')
+            if '@' in user_info:
+                # Extraire l'email du user_info
+                import re
+                email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', user_info)
+                if email_match:
+                    client_email = email_match.group(0)
+
+            # Date et heure de l'appel
+            now = datetime.now()
+            call_date = now.date()
+            call_time = now.time()
 
             # Préparer les données du ticket
             ticket_data = {
                 'call_uuid': self.call_id,
                 'phone_number': self.context.get('phone_number', self.call_id),  # Fallback sur call_id
+                'client_name': client_name,
+                'client_email': client_email,
                 'problem_type': self.context.get('problem_type', 'unknown'),
                 'status': status,
                 'sentiment': sentiment,
-                'summary': summary,
-                'transcript': full_transcript,  # Transcription complète mot pour mot
+                'summary': filtered_summary,  # Summary filtré sans mots critiques
                 'duration_seconds': call_duration,
                 'tag': classification['tag'],
-                'severity': classification['severity']
+                'severity': classification['severity'],
+                'call_date': call_date,
+                'call_time': call_time
             }
 
             # Sauvegarder dans la DB
