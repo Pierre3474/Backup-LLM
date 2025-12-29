@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS tickets (
     id SERIAL PRIMARY KEY,
     call_uuid VARCHAR(255) NOT NULL UNIQUE,
-    phone_number VARCHAR(20) NOT NULL,
+    phone_number VARCHAR(50) NOT NULL,
     problem_type VARCHAR(50) DEFAULT 'unknown',
     status VARCHAR(50) DEFAULT 'unknown',
     sentiment VARCHAR(50) DEFAULT 'neutral',
