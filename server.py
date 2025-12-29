@@ -984,7 +984,8 @@ class CallHandler:
                 # Vérifier si le client appelle pour le ticket en attente
                 user_lower = user_text.lower()
 
-                if any(word in user_lower for word in ["oui", "yes", "exact", "c'est", "correct", "affirmatif"]):
+                # Détection améliorée du OUI
+                if any(word in user_lower for word in ["oui", "yes", "exact", "c'est", "correct", "affirmatif", "bien sûr", "tout à fait", "effectivement"]):
                     # OUI, c'est pour le ticket en attente
                     logger.info(f"[{self.call_id}] Client confirms ticket: {self.context['pending_ticket']['id']}")
                     await self._say("ticket_transfer_ok")
@@ -996,15 +997,25 @@ class CallHandler:
                     self.state = ConversationState.TRANSFER
                     self.is_active = False
 
-                elif any(word in user_lower for word in ["non", "no", "pas", "autre", "différent"]):
+                # Détection améliorée du NON (incluant "du tout", "pas du tout", etc.)
+                elif any(word in user_lower for word in [
+                    "non", "no", "pas", "autre", "différent",
+                    "tout", "du tout", "pas du tout", "aucunement",
+                    "absolument pas", "négatif", "jamais"
+                ]):
                     # NON, c'est pour un autre problème
                     logger.info(f"[{self.call_id}] Client has different issue")
                     await self._say("ticket_not_related")
+                    # Attendre que le message soit bien joué avant de continuer
+                    audio_data = self.audio_cache.get("ticket_not_related")
+                    if audio_data:
+                        audio_duration = len(audio_data) / (8000 * 2)
+                        await asyncio.sleep(audio_duration + 0.5)
                     self.state = ConversationState.DIAGNOSTIC
 
                 else:
-                    # Pas clair, redemander
-                    clarification = "Est-ce bien à ce sujet ? Répondez oui ou non s'il vous plaît."
+                    # Pas clair, redemander avec plus de patience
+                    clarification = "Je n'ai pas bien compris. Est-ce que vous appelez pour le ticket en attente ? Répondez simplement oui ou non."
                     await self._say_dynamic(clarification)
 
             elif self.state == ConversationState.WELCOME:
@@ -1065,13 +1076,16 @@ class CallHandler:
                 self.state = ConversationState.VERIFICATION
 
             elif self.state == ConversationState.VERIFICATION:
-                # Vérifier si ça marche
-                if any(word in user_text.lower() for word in ["oui", "marche", "fonctionne", "ok", "bien"]):
+                # Vérifier si ça marche (détection améliorée)
+                user_lower = user_text.lower()
+
+                if any(word in user_lower for word in ["oui", "marche", "fonctionne", "ok", "bien", "parfait", "résolu", "c'est bon", "ça marche"]):
                     # Problème résolu
                     await self._say("goodbye")
                     self.is_active = False
-                else:
-                    # Problème non résolu -> Technicien
+
+                elif any(word in user_lower for word in ["non", "marche pas", "ne fonctionne pas", "toujours pas", "pareil", "rien", "toujours rien"]):
+                    # Problème NON résolu -> Technicien
                     tech_available = await self._check_technician()
 
                     if tech_available:
@@ -1091,6 +1105,11 @@ class CallHandler:
                         if audio_data:
                             await asyncio.sleep(len(audio_data) / (8000 * 2) + 0.5)
                         self.is_active = False
+
+                else:
+                    # Réponse pas claire, redemander
+                    clarification = "Je n'ai pas compris votre réponse. Est-ce que le problème est résolu ? Répondez simplement oui ou non."
+                    await self._say_dynamic(clarification)
 
         except Exception as e:
             logger.error(f"[{self.call_id}] Error processing user input: {e}")
