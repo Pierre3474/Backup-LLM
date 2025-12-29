@@ -221,12 +221,9 @@ get_user_vars() {
 generate_env_file() {
     log_info "Génération du fichier .env..."
 
-    # Construire les DSN avec les noms de services Docker (réseau interne)
-    # Important: Utiliser les noms de services et non l'IP publique pour éviter Connection Refused
-    DB_CLIENTS_DSN="postgresql://voicebot:${DB_PASSWORD}@postgres-clients:5432/db_clients"
-    DB_TICKETS_DSN="postgresql://voicebot:${DB_PASSWORD}@postgres-tickets:5432/db_tickets"
-
     # Créer le fichier .env
+    # IMPORTANT: Les DSN doivent contenir le mot de passe en dur (pas de ${VAR})
+    # car les fichiers .env ne supportent PAS l'interpolation de variables
     cat > .env <<EOF
 # ============================================
 # Configuration Voicebot PY_SAV
@@ -247,8 +244,8 @@ ELEVENLABS_VOICE_ID=N2lVS1w4EtoT3dr4eOWO
 
 # === Database Configuration ===
 DB_PASSWORD=${DB_PASSWORD}
-DB_CLIENTS_DSN=${DB_CLIENTS_DSN}
-DB_TICKETS_DSN=${DB_TICKETS_DSN}
+DB_CLIENTS_DSN=postgresql://voicebot:${DB_PASSWORD}@postgres-clients:5432/db_clients
+DB_TICKETS_DSN=postgresql://voicebot:${DB_PASSWORD}@postgres-tickets:5432/db_tickets
 
 # === Server Configuration ===
 SERVER_HOST_IP=${SERVER_HOST_IP}
