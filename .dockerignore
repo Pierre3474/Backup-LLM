@@ -33,9 +33,8 @@ MULTI_IP_SETUP.md
 .env
 .env.*
 
-# Cache files
+# Cache files (exclure SEULEMENT le cache dynamique, PAS assets/cache/ qui contient les audios pré-générés)
 cache/
-assets/cache/
 
 # System files
 .DS_Store
