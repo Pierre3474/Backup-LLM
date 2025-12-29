@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     status VARCHAR(50) DEFAULT 'unknown',
     sentiment VARCHAR(50) DEFAULT 'neutral',
     summary TEXT,
+    transcript TEXT,  -- Transcription complète de la conversation
     duration_seconds INTEGER DEFAULT 0,
     tag VARCHAR(100) DEFAULT 'UNKNOWN',
     severity VARCHAR(20) DEFAULT 'MEDIUM',

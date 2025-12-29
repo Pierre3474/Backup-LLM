@@ -307,6 +307,7 @@ class CallHandler:
         # État de la conversation
         self.state = ConversationState.INIT
         self.context: Dict = {}
+        self.transcript_buffer: List[str] = []  # Stocke toutes les transcriptions utilisateur
 
         # Stocker le numéro de téléphone dans le contexte s'il est disponible
         if phone_number:
@@ -637,6 +638,9 @@ class CallHandler:
                                 logger.info(f"[{self.call_id}] User interrupted (final): {sentence}")
                                 self.last_user_speech_time = time.time()
 
+                                # Sauvegarder la transcription
+                                self.transcript_buffer.append(f"[Interruption] {sentence}")
+
                                 # ANALYSE DE SENTIMENT TEMPS RÉEL
                                 anger_detected = self._detect_anger(sentence)
 
@@ -667,6 +671,9 @@ class CallHandler:
                         elif result.is_final:
                             logger.info(f"[{self.call_id}] User: {sentence}")
                             self.last_user_speech_time = time.time()
+
+                            # Sauvegarder la transcription
+                            self.transcript_buffer.append(sentence)
 
                             # ANALYSE DE SENTIMENT TEMPS RÉEL
                             anger_detected = self._detect_anger(sentence)
@@ -1243,6 +1250,9 @@ class CallHandler:
             # ANALYSE DE SENTIMENT VIA LLM (amélioration)
             sentiment = await self._analyze_sentiment_llm(summary)
 
+            # Générer la transcription complète
+            full_transcript = "\n".join(self.transcript_buffer) if self.transcript_buffer else "Aucune transcription disponible"
+
             # Préparer les données du ticket
             ticket_data = {
                 'call_uuid': self.call_id,
@@ -1251,6 +1261,7 @@ class CallHandler:
                 'status': status,
                 'sentiment': sentiment,
                 'summary': summary,
+                'transcript': full_transcript,  # Transcription complète mot pour mot
                 'duration_seconds': call_duration,
                 'tag': classification['tag'],
                 'severity': classification['severity']
