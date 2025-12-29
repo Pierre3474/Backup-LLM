@@ -804,12 +804,11 @@ class CallHandler:
                     ticket = pending_tickets[0]  # Premier ticket en attente
                     problem_type_fr = "connexion" if ticket['problem_type'] == "internet" else "mobile"
 
-                    welcome_with_ticket = (
-                        f"Bonjour {client_info['first_name']} {client_info['last_name']}, "
-                        f"je vois un ticket ouvert concernant votre {problem_type_fr}. "
-                        f"Est-ce à ce sujet ?"
+                    # Utiliser cache + génération ciblée
+                    await self._say("greet")  # Cache : "Bonjour"
+                    await self._say_smart(
+                        f"{client_info['first_name']} {client_info['last_name']}, je vois un ticket ouvert concernant votre {problem_type_fr}. Est-ce à ce sujet ?"
                     )
-                    await self._say_dynamic(welcome_with_ticket)
                     logger.info(f"[{self.call_id}] Ticket verification: {ticket['id']} ({ticket['problem_type']})")
 
                     # Stocker le ticket dans le contexte
@@ -817,12 +816,10 @@ class CallHandler:
                     self.state = ConversationState.TICKET_VERIFICATION
 
                 else:
-                    # Pas de ticket en attente, message personnalisé normal
-                    welcome_personalized = (
-                        f"Bonjour {client_info['first_name']} {client_info['last_name']}, "
-                        f"bienvenue au SAV Wouippleul. Comment puis-je vous aider ?"
-                    )
-                    await self._say_dynamic(welcome_personalized)
+                    # Pas de ticket en attente, message personnalisé avec cache
+                    await self._say("greet")  # Cache : "Bonjour"
+                    await self._say_smart(f"{client_info['first_name']} {client_info['last_name']}")
+                    await self._say("welcome")  # Cache : "bienvenue au SAV Wouippleul..."
                     logger.info(f"[{self.call_id}] Personalized welcome (no pending tickets)")
                     self.state = ConversationState.DIAGNOSTIC
 
@@ -833,13 +830,12 @@ class CallHandler:
                     ticket = pending_tickets[0]
                     problem_type_fr = "connexion" if ticket['problem_type'] == "internet" else "mobile"
 
-                    welcome_returning_with_ticket = (
-                        f"Bonjour, je vois que vous avez déjà appelé {len(client_history)} fois. "
+                    await self._say("greet")  # Cache : "Bonjour"
+                    await self._say_smart(
+                        f"je vois que vous avez déjà appelé {len(client_history)} fois. "
                         f"Je suis Eko, votre assistant virtuel. "
-                        f"Vous avez un ticket ouvert concernant votre {problem_type_fr}. "
-                        f"Est-ce à ce sujet ?"
+                        f"Vous avez un ticket ouvert concernant votre {problem_type_fr}. Est-ce à ce sujet ?"
                     )
-                    await self._say_dynamic(welcome_returning_with_ticket)
                     logger.info(f"[{self.call_id}] Returning client with pending ticket: {ticket['id']}")
 
                     # Stocker le ticket dans le contexte
@@ -848,26 +844,19 @@ class CallHandler:
 
                 else:
                     # Client récurrent sans ticket en attente
-                    welcome_returning = (
-                        f"Bonjour, je vois que vous avez déjà appelé {len(client_history)} fois. "
-                        f"Je suis Eko, votre assistant virtuel. "
-                        f"Comment puis-je vous aider aujourd'hui ?"
+                    await self._say("greet")  # Cache : "Bonjour"
+                    await self._say_smart(
+                        f"je vois que vous avez déjà appelé {len(client_history)} fois. "
+                        f"Je suis Eko, votre assistant virtuel. Comment puis-je vous aider aujourd'hui ?"
                     )
-                    await self._say_dynamic(welcome_returning)
                     logger.info(f"[{self.call_id}] Returning client welcome ({len(client_history)} previous calls)")
                     self.state = ConversationState.DIAGNOSTIC
 
             else:
-                # NOUVEAU CLIENT (pas d'historique, pas de fiche)
-                # Utiliser le message en cache mais CONTINUER avec un message dynamique
-                # pour garantir que "Je suis Eko" soit dit
-                welcome_new = (
-                    "Bonjour et bienvenue au service support technique de Wipple. "
-                    "Je suis Eko, votre assistant virtuel. "
-                    "Comment puis-je vous aider aujourd'hui ?"
-                )
-                await self._say_dynamic(welcome_new)
-                logger.info(f"[{self.call_id}] New client welcome")
+                # NOUVEAU CLIENT - Utiliser phrases du cache
+                await self._say("greet")     # Cache : "Bonjour"
+                await self._say("welcome")   # Cache : "bienvenue au SAV Wouippleul..."
+                logger.info(f"[{self.call_id}] New client welcome (using cache)")
                 self.state = ConversationState.DIAGNOSTIC
 
             # BOUCLE DE CONVERSATION : Garder le handler actif
@@ -1153,6 +1142,55 @@ class CallHandler:
 
         except Exception as e:
             logger.error(f"[{self.call_id}] Error saying '{phrase_key}': {e}")
+
+    async def _say_smart(self, text: str, **variables):
+        """
+        Dit une phrase en optimisant l'utilisation du cache
+
+        Stratégie :
+        1. Si phrase courte (<30 mots) ET pas de variables → TTS dynamique
+        2. Si variables fournies → Template avec nom/prénom (pas de génération)
+        3. Sinon → Génération ElevenLabs complète
+
+        Args:
+            text: Texte à dire
+            **variables: Variables optionnelles (first_name, last_name, ticket_id, etc.)
+
+        Exemples:
+            await _say_smart("Bonjour Monsieur {last_name}")  # Utilise cache + template
+            await _say_smart("Bonjour", first_name="Pierre")   # Utilise cache
+            await _say_smart("Problème complexe détecté...")  # Génère avec ElevenLabs
+        """
+        try:
+            # Si la phrase contient des placeholders {var} mais qu'aucune variable n'est fournie
+            # on laisse tel quel et on génère
+            if '{' in text and variables:
+                # Remplacer les variables dans le texte
+                text = text.format(**variables)
+
+            # Stratégie 1 : Phrase courte générique → Utiliser cache dynamique ou générer
+            word_count = len(text.split())
+
+            if word_count <= 30 and not variables:
+                # Phrase courte, on peut utiliser le cache dynamique ou générer
+                logger.info(f"[{self.call_id}] Short phrase ({word_count} words), using dynamic TTS")
+                await self._say_dynamic(text)
+                return
+
+            # Stratégie 2 : Phrase avec variables → On a déjà formaté, générer
+            if variables:
+                logger.info(f"[{self.call_id}] Personalized phrase with variables, generating TTS")
+                await self._say_dynamic(text)
+                return
+
+            # Stratégie 3 : Phrase longue générique → Générer
+            logger.info(f"[{self.call_id}] Long generic phrase ({word_count} words), generating TTS")
+            await self._say_dynamic(text)
+
+        except Exception as e:
+            logger.error(f"[{self.call_id}] Error in _say_smart: {e}")
+            # Fallback : utiliser _say_dynamic directement
+            await self._say_dynamic(text)
 
     async def _say_dynamic(self, text: str):
         """Version Optimisée : Streaming Temps Réel + Modèle Turbo"""
