@@ -10,11 +10,11 @@ import uvloop
 import logging
 import signal
 import sys
-import os
 import struct
 import time
 import hashlib
 import random
+import json
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, List
@@ -1248,7 +1248,6 @@ class CallHandler:
             result = await self._ask_llm(problem_description, classify_prompt)
 
             # Parser le JSON
-            import json
             try:
                 classification = json.loads(result)
                 tag = classification.get('tag', 'UNKNOWN').upper()
@@ -1283,8 +1282,8 @@ class CallHandler:
             try:
                 metrics.track_tts_cache_hit()
                 metrics.tts_response_time.labels(source='cache').observe(0.001)  # ~1ms pour cache
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"[{self.call_id}] Failed to track TTS cache hit: {e}")
 
             # Envoyer directement à la queue de sortie (déjà en 8kHz)
             self.is_speaking = True
@@ -1406,8 +1405,8 @@ class CallHandler:
                 try:
                     metrics.track_tts_cache_hit()
                     metrics.tts_response_time.labels(source='cache').observe(time.time() - start_time)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"[{self.call_id}] Failed to track dynamic cache hit: {e}")
 
                 await self._send_audio(cached_audio)
                 self.is_speaking = False
@@ -1445,8 +1444,8 @@ class CallHandler:
             try:
                 response_time = time.time() - start_time
                 metrics.track_tts_api_call(characters=len(text), response_time=response_time)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"[{self.call_id}] Failed to track TTS API call metrics: {e}")
 
             self.is_speaking = False
 
@@ -1621,15 +1620,15 @@ class CallHandler:
             if self.deepgram_connection:
                 try:
                     await self.deepgram_connection.finish()
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"[{self.call_id}] Error closing Deepgram connection: {e}")
 
             # Fermer le writer
             try:
                 self.writer.close()
                 await self.writer.wait_closed()
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"[{self.call_id}] Error closing writer: {e}")
 
             logger.info(f"[{self.call_id}] Cleanup completed")
 
@@ -1669,7 +1668,7 @@ class AudioSocketServer:
                     writer.close()
                     await writer.wait_closed()
                     return
-            except:
+            except Exception:
                 pass  # Not HTTP, continue
 
             # Rejeter les handshakes TLS/SSL (HTTPS scans)
