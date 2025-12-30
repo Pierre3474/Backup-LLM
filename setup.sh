@@ -657,25 +657,35 @@ display_summary() {
     echo ""
     echo -e "  ${YELLOW}    Consultez le fichier 'asterisk_config.txt' pour la configuration complète.${NC}"
     echo ""
-    echo "🚀 Lancement du serveur voicebot..."
-    echo "   (Ctrl+C pour arrêter)"
-    echo ""
-    echo "======================================================================="
-    echo ""
 }
 
 ################################################################################
 # Fonction: start_voicebot_server
-# Lance le serveur Python voicebot
+# Affiche les instructions pour suivre les logs Docker
 ################################################################################
 
 start_voicebot_server() {
-    log_info "Activation de l'environnement virtuel..."
-    source venv/bin/activate
-
-    log_info "Démarrage du serveur voicebot sur le port 9090..."
     echo ""
-    python server.py
+    echo "======================================================================="
+    echo "✅ Le voicebot tourne dans Docker (en arrière-plan)"
+    echo "======================================================================="
+    echo ""
+    log_info "Pour suivre les logs en temps réel :"
+    echo ""
+    echo "    docker logs -f voicebot-app"
+    echo ""
+    log_info "Pour arrêter le voicebot :"
+    echo ""
+    echo "    docker-compose down"
+    echo ""
+    log_info "Pour redémarrer le voicebot :"
+    echo ""
+    echo "    docker-compose restart voicebot"
+    echo ""
+    log_info "Pour voir tous les conteneurs :"
+    echo ""
+    echo "    docker ps"
+    echo ""
 }
 
 ################################################################################
