@@ -11,7 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_clients_data:/var/lib/postgresql/data
-      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+      - ./init_clients.sql:/docker-entrypoint-initdb.d/init_clients.sql
     networks:
       - voicebot-network
     healthcheck:
@@ -32,6 +32,7 @@ services:
       - "5433:5432"
     volumes:
       - postgres_tickets_data:/var/lib/postgresql/data
+      - ./init_tickets.sql:/docker-entrypoint-initdb.d/init_tickets.sql
     networks:
       - voicebot-network
     healthcheck:
