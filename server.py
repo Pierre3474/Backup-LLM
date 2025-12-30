@@ -36,6 +36,7 @@ from panoramisk import Manager as AMIManager
 import config
 from audio_utils import generate_silence, stream_and_convert_to_8khz
 import db_utils
+from db_utils import sanitize_string
 import metrics
 
 # Configure logging
@@ -549,7 +550,8 @@ class CallHandler:
 
             # Vérifier la réponse
             if response and hasattr(response, 'Value'):
-                phone_number = response.Value
+                # SÉCURITÉ : Nettoyer les octets nuls des données AMI
+                phone_number = sanitize_string(response.Value)
                 logger.info(f"[{self.call_id}] CALLERID retrieved via AMI: {phone_number}")
                 return phone_number
             else:
@@ -1669,7 +1671,7 @@ class AudioSocketServer:
             else:
                 # Essayer de décoder en texte UTF-8 (ancien format)
                 try:
-                    identifier_str = identifier_bytes.decode('utf-8', errors='ignore').strip('\x00').strip()
+                    identifier_str = identifier_bytes.decode('utf-8', errors='ignore').replace('\x00', '').strip()
                     if identifier_str:
                         call_id = identifier_str
                         logger.info(f"[{call_id}] New call connected (text format)")
@@ -1681,6 +1683,9 @@ class AudioSocketServer:
                     logger.warning(f"Failed to parse handshake: {e}")
                     call_id = identifier_bytes[:16].hex()
                     logger.info(f"[{call_id}] New call connected (fallback format)")
+
+            # SÉCURITÉ : Nettoyer call_id de tous les octets nuls résiduels
+            call_id = call_id.replace('\x00', '')
 
             # Vérifier la limite de calls simultanés
             if self.active_calls >= config.MAX_CONCURRENT_CALLS:

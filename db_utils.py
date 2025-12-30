@@ -4,11 +4,62 @@ Gestion asynchrone des clients et tickets
 """
 import asyncpg
 import logging
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 import config
 
 logger = logging.getLogger(__name__)
+
+
+def sanitize_string(value: Any) -> Any:
+    """
+    Nettoie une chaîne de caractères en retirant les octets nuls (0x00)
+    qui sont incompatibles avec PostgreSQL UTF-8.
+
+    Args:
+        value: Valeur à nettoyer (str, int, None, etc.)
+
+    Returns:
+        Valeur nettoyée (chaîne sans octets nuls, ou valeur originale si non-string)
+
+    Example:
+        >>> sanitize_string("Hello\x00World")
+        'HelloWorld'
+        >>> sanitize_string(None)
+        None
+        >>> sanitize_string(123)
+        123
+    """
+    if isinstance(value, str):
+        # Retirer tous les octets nuls de la chaîne
+        return value.replace('\x00', '')
+    return value
+
+
+def sanitize_dict(data: Dict) -> Dict:
+    """
+    Nettoie récursivement toutes les chaînes d'un dictionnaire
+    en retirant les octets nuls (0x00).
+
+    Args:
+        data: Dictionnaire à nettoyer
+
+    Returns:
+        Dictionnaire avec toutes les chaînes nettoyées
+
+    Example:
+        >>> sanitize_dict({'name': 'John\x00Doe', 'age': 30})
+        {'name': 'JohnDoe', 'age': 30}
+    """
+    cleaned = {}
+    for key, value in data.items():
+        if isinstance(value, dict):
+            cleaned[key] = sanitize_dict(value)
+        elif isinstance(value, list):
+            cleaned[key] = [sanitize_string(item) for item in value]
+        else:
+            cleaned[key] = sanitize_string(value)
+    return cleaned
 
 
 # === Connection Pools (singleton) ===
@@ -149,6 +200,10 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
         return None
 
     try:
+        # SÉCURITÉ : Nettoyer toutes les chaînes pour retirer les octets nuls (0x00)
+        # incompatibles avec PostgreSQL UTF-8
+        clean_data = sanitize_dict(call_data)
+
         async with _tickets_pool.acquire() as conn:
             ticket_id = await conn.fetchval(
                 """
@@ -171,23 +226,23 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 RETURNING id
                 """,
-                call_data['call_uuid'],
-                call_data['phone_number'],
-                call_data.get('client_name'),  # Peut être NULL
-                call_data.get('client_email'),  # Peut être NULL
-                call_data.get('problem_type', 'unknown'),
-                call_data.get('status', 'unknown'),
-                call_data.get('sentiment', 'neutral'),
-                call_data.get('summary', 'Aucun résumé disponible'),
-                call_data.get('duration_seconds', 0),
-                call_data.get('tag', 'UNKNOWN'),
-                call_data.get('severity', 'MEDIUM'),
-                call_data.get('call_date', datetime.now().date()),
-                call_data.get('call_time', datetime.now().time()),
+                clean_data['call_uuid'],
+                clean_data['phone_number'],
+                clean_data.get('client_name'),  # Peut être NULL
+                clean_data.get('client_email'),  # Peut être NULL
+                clean_data.get('problem_type', 'unknown'),
+                clean_data.get('status', 'unknown'),
+                clean_data.get('sentiment', 'neutral'),
+                clean_data.get('summary', 'Aucun résumé disponible'),
+                clean_data.get('duration_seconds', 0),
+                clean_data.get('tag', 'UNKNOWN'),
+                clean_data.get('severity', 'MEDIUM'),
+                clean_data.get('call_date', datetime.now().date()),
+                clean_data.get('call_time', datetime.now().time()),
                 datetime.now()
             )
 
-            logger.info(f"✓ Ticket created: {ticket_id} (call: {call_data['call_uuid']}, tag: {call_data.get('tag', 'UNKNOWN')})")
+            logger.info(f"✓ Ticket created: {ticket_id} (call: {clean_data['call_uuid']}, tag: {clean_data.get('tag', 'UNKNOWN')})")
             return ticket_id
 
     except Exception as e:
