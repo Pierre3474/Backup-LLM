@@ -922,11 +922,12 @@ class CallHandler:
                     self.state = ConversationState.DIAGNOSTIC
 
             else:
-                # NOUVEAU CLIENT - Utiliser phrases du cache
+                # NOUVEAU CLIENT - Accueil + demande d'identité automatique
                 await self._say("greet")     # Cache : "Bonjour"
                 await self._say("welcome")   # Cache : "bienvenue au SAV Wouippleul..."
-                logger.info(f"[{self.call_id}] New client welcome (using cache)")
-                self.state = ConversationState.DIAGNOSTIC
+                await self._say("ask_identity")  # Cache : "Pour mieux vous aider, puis-je avoir votre nom et prénom ?"
+                logger.info(f"[{self.call_id}] New client welcome (using cache) - asking for identity")
+                self.state = ConversationState.AWAITING_IDENTITY
 
             # BOUCLE DE CONVERSATION : Garder le handler actif
             # Le traitement des réponses se fait via _process_user_input() appelé par Deepgram
