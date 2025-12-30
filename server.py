@@ -426,6 +426,54 @@ class CallHandler:
 
         return False
 
+    def _detect_commercial_topic(self, user_text: str) -> bool:
+        """
+        Détecte si le client parle d'un sujet COMMERCIAL au lieu de technique
+        (le client s'est trompé dans le SVI et doit être transféré)
+
+        Args:
+            user_text: Texte dit par l'utilisateur
+
+        Returns:
+            True si sujet commercial détecté, False sinon
+
+        Exemples:
+            "je veux résilier" → True (commercial)
+            "ma facture est trop élevée" → True (commercial)
+            "mon wifi ne marche pas" → False (technique)
+        """
+        text_lower = user_text.lower()
+
+        # Mots-clés COMMERCIAUX (facturation, vente, abonnement)
+        commercial_keywords = [
+            # Facturation
+            'facture', 'facturation', 'paiement', 'prélèvement', 'impayé',
+            'remboursement', 'rembourser', 'montant', 'prix', 'tarif',
+            'trop cher', 'coûte cher', 'payer', 'payé', 'dette',
+            # Abonnement
+            'abonnement', 'résiliation', 'résilier', 'annuler', 'arrêter',
+            'changer d\'abonnement', 'modifier mon abonnement', 'forfait',
+            'engagement', 'sans engagement', 'période d\'engagement',
+            # Vente / Offres
+            'offre', 'promotion', 'nouvelle offre', 'changement offre',
+            'upgrade', 'migrer', 'passer à', 'souscrire',
+            # Commercial général
+            'commercial', 'service commercial', 'vente', 'devis',
+            'contrat', 'signature', 'renouvellement contrat'
+        ]
+
+        # Compter les correspondances
+        commercial_score = sum(1 for keyword in commercial_keywords if keyword in text_lower)
+
+        if commercial_score > 0:
+            logger.warning(
+                f"[{self.call_id}] COMMERCIAL TOPIC detected (score: {commercial_score}) - "
+                f"Client chose 'technique' but needs commercial service"
+            )
+            return True
+
+        return False
+
     def _detect_problem_type(self, user_text: str) -> str:
         """
         Détecte intelligemment le type de problème (internet ou mobile/téléphone)
@@ -844,6 +892,26 @@ class CallHandler:
                                 self.is_active = False
                                 return
 
+                            # DÉTECTION SUJET COMMERCIAL (client s'est trompé dans le SVI)
+                            commercial_detected = self._detect_commercial_topic(sentence)
+
+                            if commercial_detected:
+                                # TRANSFERT VERS SERVICE COMMERCIAL
+                                logger.warning(f"[{self.call_id}] Commercial topic detected - transferring to sales")
+
+                                redirect_message = (
+                                    "Je vois que votre demande concerne un sujet commercial. "
+                                    "Je vais vous transférer vers un conseiller commercial "
+                                    "qui pourra mieux vous aider."
+                                )
+                                await self._say_dynamic(redirect_message)
+
+                                self.state = ConversationState.TRANSFER
+                                self.context['transfer_reason'] = 'commercial'  # Pour stats
+                                await asyncio.sleep(2)
+                                self.is_active = False
+                                return
+
                             # Continuer le traitement normal
                             await self._process_user_input(sentence)
 
@@ -1234,7 +1302,7 @@ class CallHandler:
 
         Args:
             problem_description: Description du problème
-            problem_type: 'internet' ou 'mobile'
+            problem_type: 'internet', 'mobile', ou 'commercial'
 
         Returns:
             Dict avec 'tag' et 'severity' (LOW, MEDIUM, HIGH)
@@ -1244,7 +1312,8 @@ class CallHandler:
                 "Tu es un expert en classification de problèmes SAV.\n"
                 "Classifie le problème avec un tag strict.\n\n"
                 "TAGS INTERNET : FIBRE_SYNCHRO, FIBRE_DEBIT, WIFI_FAIBLE, BOX_ETEINTE, CONNEXION_INSTABLE, DNS_PROBLEME\n"
-                "TAGS MOBILE : MOBILE_RESEAU, MOBILE_DATA, MOBILE_APPELS, MOBILE_SMS, CARTE_SIM\n\n"
+                "TAGS MOBILE : MOBILE_RESEAU, MOBILE_DATA, MOBILE_APPELS, MOBILE_SMS, CARTE_SIM\n"
+                "TAGS COMMERCIAL : BILLING_PAYMENT, BILLING_INVOICE, SALES_UPGRADE, SALES_CANCEL, CONTRACT_CHANGE\n\n"
                 "Réponds au format JSON strict : {\"tag\": \"XXX\", \"severity\": \"LOW|MEDIUM|HIGH\"}\n"
                 "Exemple: {\"tag\": \"FIBRE_SYNCHRO\", \"severity\": \"MEDIUM\"}"
             )

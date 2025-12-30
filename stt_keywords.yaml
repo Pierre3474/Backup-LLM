@@ -163,3 +163,21 @@ cities:
   - "Angers:2"
   - "Nîmes:2"
   - "Villeurbanne:2"
+
+# === TERMES COMMERCIAUX (facturation, vente, abonnement) ===
+commercial_terms:
+  - "facture:2"
+  - "facturation:2"
+  - "paiement:2"
+  - "prélèvement:2"
+  - "remboursement:2"
+  - "abonnement:2"
+  - "résiliation:2"
+  - "résilier:2"
+  - "contrat:2"
+  - "engagement:2"
+  - "offre:2"
+  - "promotion:2"
+  - "commercial:2"
+  - "devis:2"
+  - "tarif:2"
