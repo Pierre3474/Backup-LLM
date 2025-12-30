@@ -46,6 +46,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Réduire les logs verbeux de Deepgram (erreur "tasks cancelled" normale lors de fermeture)
+logging.getLogger('deepgram').setLevel(logging.CRITICAL)  # Seulement erreurs critiques
+logging.getLogger('deepgram.clients.common.v1.abstract_async_websocket').setLevel(logging.CRITICAL)
+
 
 # === Utils ===
 def load_stt_keywords() -> list:
