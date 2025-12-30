@@ -1012,7 +1012,7 @@ class CallHandler:
                     # ARCHITECTURE HYBRIDE
                     await self._say_hybrid(
                         "greet",
-                        f"Je vois que vous avez déjà appelé {len(client_history)} fois. "
+                        f"Je vois que vous nous avez déjà contacté {len(client_history)} fois. "
                         f"Je suis Eko. Vous avez un ticket ouvert concernant votre {problem_type_fr}. Est-ce à ce sujet ?"
                     )
                     logger.info(f"[{self.call_id}] Returning client with pending ticket: {ticket['id']}")
@@ -1025,7 +1025,7 @@ class CallHandler:
                     # Client récurrent sans ticket en attente - ARCHITECTURE HYBRIDE
                     await self._say_hybrid(
                         "greet",
-                        f"Je vous reconnais, vous avez déjà appelé {len(client_history)} fois. Je suis Eko. Comment puis-je vous aider ?"
+                        f"Je vous reconnais, vous nous avez déjà contacté {len(client_history)} fois. Je suis Eko. Comment puis-je vous aider ?"
                     )
                     logger.info(f"[{self.call_id}] Returning client welcome ({len(client_history)} previous calls)")
                     self.state = ConversationState.DIAGNOSTIC
@@ -1095,8 +1095,26 @@ class CallHandler:
                 # Vérifier si le client appelle pour le ticket en attente
                 user_lower = user_text.lower()
 
-                # Détection améliorée du OUI
-                if any(word in user_lower for word in ["oui", "yes", "exact", "c'est", "correct", "affirmatif", "bien sûr", "tout à fait", "effectivement"]):
+                # DÉTECTION PRIORITAIRE : Problème non résolu (même ticket)
+                # "Non toujours pas", "Non pas encore", "Toujours le même problème"
+                if any(phrase in user_lower for phrase in [
+                    "toujours pas", "pas encore", "toujours le même", "toujours pareil",
+                    "ça marche toujours pas", "marche toujours pas", "fonctionne toujours pas",
+                    "pas résolu", "toujours rien", "encore cassé", "encore en panne"
+                ]):
+                    # OUI, même problème non résolu → transfert
+                    logger.info(f"[{self.call_id}] Client confirms ticket (problem NOT resolved): {self.context['pending_ticket']['id']}")
+                    await self._say("ticket_transfer_ok")
+                    # Attendre que l'audio soit réellement joué
+                    audio_data = self.audio_cache.get("ticket_transfer_ok")
+                    if audio_data:
+                        audio_duration = len(audio_data) / (8000 * 2)
+                        await asyncio.sleep(audio_duration + 0.5)
+                    self.state = ConversationState.TRANSFER
+                    self.is_active = False
+
+                # Détection OUI standard
+                elif any(word in user_lower for word in ["oui", "yes", "exact", "c'est ça", "correct", "affirmatif", "bien sûr", "tout à fait", "effectivement"]):
                     # OUI, c'est pour le ticket en attente
                     logger.info(f"[{self.call_id}] Client confirms ticket: {self.context['pending_ticket']['id']}")
                     await self._say("ticket_transfer_ok")
@@ -1108,12 +1126,12 @@ class CallHandler:
                     self.state = ConversationState.TRANSFER
                     self.is_active = False
 
-                # Détection améliorée du NON (incluant "du tout", "pas du tout", etc.)
-                elif any(word in user_lower for word in [
-                    "non", "no", "pas", "autre", "différent",
-                    "tout", "du tout", "pas du tout", "aucunement",
-                    "absolument pas", "négatif", "jamais"
-                ]):
+                # Détection NON (problème différent) - plus restrictive
+                elif any(phrase in user_lower for phrase in [
+                    "non c'est", "non c'est un", "non c'est pour",
+                    "non autre", "non différent", "non un autre",
+                    "pas ça", "autre chose", "autre problème"
+                ]) or (user_lower.strip() in ["non", "no", "négatif"]):
                     # NON, c'est pour un autre problème
                     logger.info(f"[{self.call_id}] Client has different issue")
                     await self._say("ticket_not_related")
