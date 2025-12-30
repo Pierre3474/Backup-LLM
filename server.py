@@ -787,7 +787,8 @@ class CallHandler:
                             # On traite la phrase immédiatement (même si pas finale)
                             # pour réagir rapidement à l'interruption
                             if result.is_final:
-                                logger.info(f"[{self.call_id}] User interrupted (final): {sentence}")
+                                # LOG DÉBOGAGE: Interruption du client (barge-in)
+                                logger.info(f"[{self.call_id}] 👤 CLIENT (INTERRUPTION): {sentence}")
                                 self.last_user_speech_time = time.time()
 
                                 # ANALYSE DE SENTIMENT TEMPS RÉEL
@@ -818,7 +819,8 @@ class CallHandler:
 
                         # Traitement normal si le bot ne parlait pas
                         elif result.is_final:
-                            logger.info(f"[{self.call_id}] User: {sentence}")
+                            # LOG DÉBOGAGE: Transcription finale du client
+                            logger.info(f"[{self.call_id}] 👤 CLIENT (STT): {sentence}")
                             self.last_user_speech_time = time.time()
 
                             # ANALYSE DE SENTIMENT TEMPS RÉEL
@@ -1175,6 +1177,9 @@ class CallHandler:
         try:
             start_time = time.time()
 
+            # LOG DÉBOGAGE: Message du client
+            logger.info(f"[{self.call_id}] 👤 CLIENT: {user_message}")
+
             response = self.groq_client.chat.completions.create(
                 model=config.GROQ_MODEL,
                 messages=[
@@ -1186,11 +1191,21 @@ class CallHandler:
                 timeout=config.API_TIMEOUT
             )
 
-            return response.choices[0].message.content.strip()
+            ai_response = response.choices[0].message.content.strip()
+
+            # LOG DÉBOGAGE: Réponse de l'IA
+            logger.info(f"[{self.call_id}] 🤖 IA: {ai_response}")
+
+            latency = time.time() - start_time
+            logger.debug(f"[{self.call_id}] LLM latency: {latency:.3f}s")
+
+            return ai_response
 
         except Exception as e:
             logger.error(f"[{self.call_id}] Groq API error: {e}")
-            return "Je suis désolé, pouvez-vous répéter ?"
+            fallback_response = "Je suis désolé, pouvez-vous répéter ?"
+            logger.info(f"[{self.call_id}] 🤖 IA (fallback): {fallback_response}")
+            return fallback_response
 
     async def _analyze_sentiment_llm(self, conversation_summary: str) -> str:
         """
@@ -1393,6 +1408,9 @@ class CallHandler:
     async def _say_dynamic(self, text: str):
         """Version Optimisée : Streaming Temps Réel + Modèle Turbo"""
         try:
+            # LOG DÉBOGAGE: Ce que l'IA va dire
+            logger.info(f"[{self.call_id}] 🔊 IA PARLE: {text}")
+
             self.is_speaking = True
             start_time = time.time()
 
