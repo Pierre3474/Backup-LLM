@@ -48,6 +48,37 @@ logger = logging.getLogger(__name__)
 
 
 # === Utils ===
+def load_stt_keywords() -> list:
+    """
+    Charge les keywords depuis stt_keywords.yaml pour améliorer la reconnaissance STT
+
+    Returns:
+        Liste de keywords formatés pour Deepgram (ex: ["Pierre:3", "Martin:3"])
+    """
+    try:
+        keywords_file = Path(__file__).parent / "stt_keywords.yaml"
+
+        if not keywords_file.exists():
+            logger.warning("stt_keywords.yaml not found, STT will work without keyword boosting")
+            return []
+
+        with open(keywords_file, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+
+        # Fusionner toutes les catégories de keywords
+        all_keywords = []
+        for category, keywords_list in data.items():
+            if isinstance(keywords_list, list):
+                all_keywords.extend(keywords_list)
+
+        logger.info(f"✓ Loaded {len(all_keywords)} STT keywords for improved recognition")
+        return all_keywords
+
+    except Exception as e:
+        logger.error(f"Failed to load STT keywords: {e}")
+        return []
+
+
 def clean_email_text(text: str) -> str:
     """Nettoie une transcription d'email (at->@, dot->., etc.)"""
     if not text:
@@ -335,6 +366,9 @@ class CallHandler:
 
         # Deepgram connection
         self.deepgram_connection = None
+
+        # STT Keywords pour améliorer la reconnaissance
+        self.stt_keywords = load_stt_keywords()
 
         # Logging audio
         self.audio_log_file = None
@@ -731,7 +765,8 @@ class CallHandler:
                 interim_results=True,
                 punctuate=True,
                 vad_events=True,
-                endpointing=config.DEEPGRAM_ENDPOINTING_LONG  # 1200ms pour ne pas couper pendant les descriptions
+                endpointing=config.DEEPGRAM_ENDPOINTING_LONG,  # 1200ms pour ne pas couper pendant les descriptions
+                keywords=self.stt_keywords if self.stt_keywords else None  # Booste la reconnaissance des noms propres
             )
 
             # Créer la connexion (API Deepgram 3.7+)
