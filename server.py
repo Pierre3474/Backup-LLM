@@ -1102,11 +1102,11 @@ class CallHandler:
                     "ça marche toujours pas", "marche toujours pas", "fonctionne toujours pas",
                     "pas résolu", "toujours rien", "encore cassé", "encore en panne"
                 ]):
-                    # OUI, même problème non résolu → transfert
+                    # OUI, même problème non résolu → transfert avec message adapté
                     logger.info(f"[{self.call_id}] Client confirms ticket (problem NOT resolved): {self.context['pending_ticket']['id']}")
-                    await self._say("ticket_transfer_ok")
+                    await self._say("ticket_transfer_not_resolved")
                     # Attendre que l'audio soit réellement joué
-                    audio_data = self.audio_cache.get("ticket_transfer_ok")
+                    audio_data = self.audio_cache.get("ticket_transfer_not_resolved")
                     if audio_data:
                         audio_duration = len(audio_data) / (8000 * 2)
                         await asyncio.sleep(audio_duration + 0.5)

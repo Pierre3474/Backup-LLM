@@ -111,6 +111,7 @@ CACHED_PHRASES = {
     # --- Escalade technicien ---
     "transfer": "Je vous transfère à un technicien. Ne raccrochez pas.",
     "ticket_transfer_ok": "Très bien, je vous transfère immédiatement à un technicien qui va prendre la suite.",
+    "ticket_transfer_not_resolved": "Je comprends que le problème persiste. Je vous transfère immédiatement à un technicien qui va s'en occuper.",
     "offer_email_transfer": "Je peux vous envoyer un email avec les détails du problème et vous serez rappelé dans les plus brefs délais.",
 
     # --- Création de ticket ---
