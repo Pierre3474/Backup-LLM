@@ -17,7 +17,6 @@ Backup-LLM/
 │
 ├── 🐍 Code Source Principal
 │   ├── server.py             # Serveur AudioSocket (cœur du voicebot)
-│   ├── dashboard.py          # Interface Streamlit de supervision
 │   ├── audio_utils.py        # Utilitaires audio (conversion, cache)
 │   ├── db_utils.py           # Utilitaires base de données
 │   ├── metrics.py            # Métriques Prometheus
@@ -34,6 +33,7 @@ Backup-LLM/
 │
 ├── 📊 Monitoring
 │   └── monitoring/
+│       ├── dashboard.py                      # Interface Streamlit de supervision
 │       ├── prometheus.yml                    # Config Prometheus
 │       └── grafana/
 │           ├── provisioning/                 # Provisioning Grafana
@@ -52,11 +52,7 @@ Backup-LLM/
 │   └── scripts/
 │       ├── reset_database.sh      # Réinitialiser la DB
 │       ├── reset_database.sql     # SQL de réinitialisation
-│       ├── quick_reset.sh         # Reset rapide (dev)
-│       ├── migrate_env.sh         # Migration .env
-│       ├── manage_allowed_ips.sh  # Gestion IPs autorisées
-│       ├── test_sanitization.py   # Tests sanitization
-│       └── test_stt_keywords.py   # Tests STT keywords
+│       └── quick_reset.sh         # Reset rapide (dev)
 │
 ├── 📚 Documentation
 │   ├── README.md                  # Documentation principale
@@ -108,10 +104,10 @@ Backup-LLM/
 | Fichier | Description | Lignes |
 |---------|-------------|--------|
 | `server.py` | Serveur AudioSocket, gestion des appels, flow conversationnel | ~1500 |
-| `dashboard.py` | Interface Streamlit pour supervision des tickets | ~300 |
 | `audio_utils.py` | Conversion audio, gestion du cache | ~200 |
 | `db_utils.py` | Connexions DB, requêtes clients/tickets | ~150 |
 | `metrics.py` | Métriques Prometheus (latence, cache hits, coûts) | ~100 |
+| `monitoring/dashboard.py` | Interface Streamlit pour supervision des tickets | ~300 |
 
 ### Scripts Principaux
 
@@ -133,8 +129,7 @@ Backup-LLM/
 ## 🗂️ Organisation par Fonction
 
 ### Développement
-- Code source : `server.py`, `dashboard.py`, `*.py`
-- Tests : `scripts/test_*.py`
+- Code source : `server.py`, `*.py`
 - Configuration : `config.py`, `.env`
 
 ### Déploiement
@@ -146,7 +141,7 @@ Backup-LLM/
 - Métriques : `metrics.py`
 - Prometheus : `monitoring/prometheus.yml`
 - Grafana : `monitoring/grafana/`
-- Dashboard : `dashboard.py`
+- Dashboard : `monitoring/dashboard.py`
 
 ### Documentation
 - README principal : `README.md`
