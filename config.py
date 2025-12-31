@@ -75,56 +75,61 @@ BUSINESS_SCHEDULE = {
 # === Phrases pré-cachées (8kHz) ===
 CACHED_PHRASES = {
     # --- Accueil ---
-    "greet": "Bonjour et bienvenue au service support technique de chez Wipple.",
-    "welcome": "Je suis Eko, votre assistant virtuel. Je vais vous aider à enregistrer votre demande afin de vous dépanner rapidement.",
+    "greet": "Bonjour, et bienvenue au service technique de chez Wipple.",
+    "welcome": "Je suis Éco, votre assistant virtuel. Je vais vous aider à enregistrer votre demande, afin de vous dépanner rapidement.",
+
+    # --- Clients qui rappellent (optimisé vitesse) ---
+    "returning_client_pending_internet": "Bonjour, je suis Éco. Vous avez un ticket ouvert concernant votre connexion. Est-ce à ce sujet ?",
+    "returning_client_pending_mobile": "Bonjour, je suis Éco. Vous avez un ticket ouvert concernant votre mobile. Est-ce à ce sujet ?",
+    "returning_client_no_ticket": "Bonjour, je vous reconnais. Je suis Éco. Comment puis-je vous aider ?",
 
     # --- Identification ---
     "ask_identity": "Pour commencer, pouvez-vous me donner votre nom, votre prénom, ainsi que le nom de votre entreprise, s'il vous plaît ?",
     "ask_firstname": "Quel est votre prénom ?",
-    "ask_email": "Pouvez-vous m'épeler votre adresse email afin de créer un ticket attitré ?",
+    "ask_email": "Pouvez-vous m'épeler votre adresse email, afin de créer un ticket ?",
     "ask_company": "Quel est le nom de votre entreprise ?",
     "email_invalid": "L'adresse email que vous avez donnée semble incorrecte. Pouvez-vous la répéter ?",
 
     # --- Type de problème ---
-    "ask_problem_or_modif": "Merci. S'agit-il d'une panne technique ou d'une demande de modification sur votre installation ?",
+    "ask_problem_or_modif": "Merci. S'agit-il d'une panne technique, ou d'une demande de modification sur votre installation ?",
     "ask_description_technique": "D'accord. Pouvez-vous m'expliquer en détail votre problème ? Prenez votre temps, je vous écoute.",
     "ask_number_equipement": "Combien d'équipements sont concernés par ce problème ?",
     "ask_restart_devices": "Avez-vous essayé de redémarrer vos équipements ?",
 
     # --- Confirmations courtes ---
     "ok": "D'accord.",
-    "wait": "Un instant s'il vous plaît.",
+    "wait": "Un instant, s'il vous plaît.",
 
     # --- Fillers pour masquer latence ---
-    "filler_hum": "Hum, laissez-moi regarder...",
-    "filler_ok": "Très bien, je note...",
-    "filler_one_moment": "Un instant s'il vous plaît...",
+    "filler_hum": "Hum, laissez-moi regarder.",
+    "filler_ok": "Très bien, je note.",
+    "filler_one_moment": "Un instant, s'il vous plaît.",
     "filler_checking": "Je vérifie cela.",
     "filler_processing": "Je traite votre demande.",
-    "filler_let_me_see": "Laissez-moi voir ça...",
+    "filler_let_me_see": "Laissez-moi voir ça.",
 
     # --- Relances ---
     "still_there_gentle": "Êtes-vous toujours là ?",
     "clarify_unclear": "Je n'ai pas bien compris. Pouvez-vous reformuler ?",
-    "clarify_yes_no": "Pouvez-vous me répondre par oui ou par non ?",
+    "clarify_yes_no": "Pouvez-vous me répondre par oui, ou par non ?",
 
     # --- Escalade technicien ---
     "transfer": "Je vous transfère à un technicien. Ne raccrochez pas.",
-    "ticket_transfer_ok": "Très bien, je vous transfère immédiatement à un technicien qui va prendre la suite.",
-    "offer_email_transfer": "Je peux vous envoyer un email avec les détails du problème et vous serez rappelé dans les plus brefs délais.",
+    "ticket_transfer_ok": "Très bien. Je vous transfère immédiatement à un technicien, qui va prendre la suite.",
+    "offer_email_transfer": "Je peux vous envoyer un email avec les détails du problème, et vous serez rappelé dans les plus brefs délais.",
 
     # --- Création de ticket ---
     "confirm_ticket": "Très bien. J'ai bien enregistré votre demande. Je procède maintenant à la création de votre ticket.",
-    "ticket_created": "Votre ticket a été créé avec succès. Vous allez recevoir un email de confirmation avec le numéro de ticket.",
+    "ticket_created": "Votre ticket a été créé avec succès. Vous allez recevoir un email de confirmation, avec le numéro de ticket.",
 
     # --- Suivi ticket existant ---
-    "ticket_not_related": "D'accord, quel est votre problème aujourd'hui ?",
+    "ticket_not_related": "D'accord. Quel est votre problème aujourd'hui ?",
 
     # --- Horaires et fermeture ---
-    "closed_hours": "Nos bureaux sont actuellement fermés. Le service technique est disponible du lundi au jeudi de neuf heures à douze heures et de quatorze heures à dix-huit heures, et le vendredi de neuf heures à douze heures et de quatorze heures à dix-sept heures.",
+    "closed_hours": "Nos bureaux sont actuellement fermés. Le service technique est disponible du lundi au jeudi, de neuf heures à douze heures, et de quatorze heures à dix-huit heures. Le vendredi, de neuf heures à douze heures, et de quatorze heures à dix-sept heures.",
 
     # --- Fin d'appel ---
-    "goodbye": "Au revoir et bonne journée. N'hésitez pas à nous rappeler si besoin.",
+    "goodbye": "Au revoir, et bonne journée. N'hésitez pas à nous rappeler si besoin.",
     "error": "Je suis désolé, une erreur technique s'est produite. Veuillez réessayer.",
 }
 

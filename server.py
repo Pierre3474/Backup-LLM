@@ -940,37 +940,25 @@ class CallHandler:
             elif client_history and len(client_history) > 0:
                 # CLIENT RÉCURRENT (avec historique mais sans fiche client)
                 if pending_tickets:
-                    # Il y a des tickets en attente
+                    # Il y a des tickets en attente - UTILISER CACHE pour réponse instantanée
                     ticket = pending_tickets[0]
-                    problem_type_fr = "connexion" if ticket['problem_type'] == "internet" else "mobile"
 
-                    # Formater le nombre d'appels correctement (1 fois → une fois)
-                    call_count = len(client_history)
-                    fois_text = "une fois" if call_count == 1 else f"{call_count} fois"
+                    # Choisir la phrase en cache selon le type de problème
+                    if ticket['problem_type'] == "internet":
+                        await self._say("returning_client_pending_internet")
+                    else:
+                        await self._say("returning_client_pending_mobile")
 
-                    # ARCHITECTURE HYBRIDE
-                    await self._say_hybrid(
-                        "greet",
-                        f"Je vois que vous avez déjà appelé {fois_text}. "
-                        f"Je suis Eko. Vous avez un ticket ouvert concernant votre {problem_type_fr}. Est-ce à ce sujet ?"
-                    )
-                    logger.info(f"[{self.call_id}] Returning client with pending ticket: {ticket['id']}")
+                    logger.info(f"[{self.call_id}] Returning client with pending ticket: {ticket['id']} (using cache)")
 
                     # Stocker le ticket dans le contexte
                     self.context['pending_ticket'] = ticket
                     self.state = ConversationState.TICKET_VERIFICATION
 
                 else:
-                    # Client récurrent sans ticket en attente - ARCHITECTURE HYBRIDE
-                    # Formater le nombre d'appels correctement (1 fois → une fois)
-                    call_count = len(client_history)
-                    fois_text = "une fois" if call_count == 1 else f"{call_count} fois"
-
-                    await self._say_hybrid(
-                        "greet",
-                        f"Je vous reconnais, vous avez déjà appelé {fois_text}. Je suis Eko. Comment puis-je vous aider ?"
-                    )
-                    logger.info(f"[{self.call_id}] Returning client welcome ({len(client_history)} previous calls)")
+                    # Client récurrent sans ticket en attente - UTILISER CACHE pour réponse instantanée
+                    await self._say("returning_client_no_ticket")
+                    logger.info(f"[{self.call_id}] Returning client welcome ({len(client_history)} previous calls) (using cache)")
                     self.state = ConversationState.DIAGNOSTIC
 
             else:

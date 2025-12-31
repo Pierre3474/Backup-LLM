@@ -6,12 +6,12 @@ services:
     environment:
       POSTGRES_DB: db_clients
       POSTGRES_USER: voicebot
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-voicebot_secure_2024}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_clients_data:/var/lib/postgresql/data
-      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+      - ./init_clients.sql:/docker-entrypoint-initdb.d/init_clients.sql
     networks:
       - voicebot-network
     healthcheck:
@@ -27,11 +27,12 @@ services:
     environment:
       POSTGRES_DB: db_tickets
       POSTGRES_USER: voicebot
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-voicebot_secure_2024}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5433:5432"
     volumes:
       - postgres_tickets_data:/var/lib/postgresql/data
+      - ./init_tickets.sql:/docker-entrypoint-initdb.d/init_tickets.sql
     networks:
       - voicebot-network
     healthcheck:
@@ -72,7 +73,7 @@ services:
   dashboard:
     build: .
     container_name: voicebot-dashboard
-    command: streamlit run dashboard.py --server.port 8501 --server.address 0.0.0.0
+    command: streamlit run monitoring/dashboard.py --server.port 8501 --server.address 0.0.0.0
     ports:
       - "8501:8501"
     env_file: .env
@@ -111,8 +112,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=voicebot2024
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=http://localhost:3000
     volumes:
