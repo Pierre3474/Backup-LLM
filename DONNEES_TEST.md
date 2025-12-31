@@ -2,8 +2,28 @@
 
 Ce document explique comment charger et gérer les données de test pour entraîner le voicebot.
 
+## Client Principal
+
+**Clément DUMAS - Total**
+- **Numéro** : 0781833134
+- **Nom** : DUMAS
+- **Prénom** : Clément
+- **Entreprise** : Total
+- **Équipement** : ER605 OMADA
+
+Ce client est permanent et ne sera **PAS supprimé** lors du nettoyage des données de test.
+
+**Note** : Tous les clients utilisent des équipements **Ubiquiti** ou **OMADA** (pas de Livebox/Freebox/SFR Box).
+
+Pour ajouter ce client rapidement :
+```bash
+./add_clement_dumas.sh
+```
+
 ## Fichiers
 
+- **add_clement_dumas.sh** : Script pour ajouter Clément DUMAS (Total)
+- **add_clement_dumas.sql** : Script SQL pour Clément DUMAS
 - **insert_test_clients.sql** : Script SQL contenant les données de test
 - **load_test_data.sh** : Script pour charger les données
 - **clean_test_data.sh** : Script pour supprimer les données de test
@@ -40,24 +60,24 @@ Ce script va insérer :
 
 #### Clients avec Entreprise (0699XXXXX)
 
-| Téléphone | Nom | Prénom | Entreprise | Box |
-|-----------|-----|--------|------------|-----|
-| 0699111001 | Lefebvre | Thomas | TechCorp | Livebox 6 |
-| 0699111002 | Rousseau | Emma | TechCorp | Freebox Delta |
-| 0699222001 | Petit | Camille | DataSolutions | Bbox Ultym |
-| 0699333001 | Durand | Alexandre | CloudInnovate | SFR Box 7 |
-| 0699444001 | Laurent | Laura | SecureNet | Bbox Must |
-| 0699555001 | Fontaine | Hugo | MediaPlus | SFR Box 8 |
+| Téléphone | Nom | Prénom | Entreprise | Équipement |
+|-----------|-----|--------|------------|------------|
+| 0699111001 | Lefebvre | Thomas | TechCorp | UniFi Dream Machine |
+| 0699111002 | Rousseau | Emma | TechCorp | ER605 OMADA |
+| 0699222001 | Petit | Camille | DataSolutions | UniFi Security Gateway |
+| 0699333001 | Durand | Alexandre | CloudInnovate | EdgeRouter 4 |
+| 0699444001 | Laurent | Laura | SecureNet | UniFi Security Gateway Pro |
+| 0699555001 | Fontaine | Hugo | MediaPlus | UniFi Dream Machine |
 
 #### Clients sans Entreprise (0698XXXXX)
 
-| Téléphone | Nom | Prénom | Box |
-|-----------|-----|--------|-----|
-| 0698000001 | Vidal | Marc | Livebox 5 |
-| 0698000002 | Martinez | Sophie | Freebox Revolution |
-| 0698000003 | Lopez | David | SFR Box 7 |
-| 0698000004 | Gonzalez | Caroline | Bbox Must |
-| 0698000005 | Perez | Paul | Livebox 6 |
+| Téléphone | Nom | Prénom | Équipement |
+|-----------|-----|--------|------------|
+| 0698000001 | Vidal | Marc | ER605 OMADA |
+| 0698000002 | Martinez | Sophie | UniFi Security Gateway |
+| 0698000003 | Lopez | David | EdgeRouter 4 |
+| 0698000004 | Gonzalez | Caroline | UniFi Dream Machine |
+| 0698000005 | Perez | Paul | ER7206 OMADA |
 
 ## Scénarios de Test
 

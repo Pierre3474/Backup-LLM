@@ -3,6 +3,7 @@
 
 -- 1. Ajouter des entreprises de test
 INSERT INTO companies (name, normalized_name, is_active) VALUES
+    ('Total', 'total', TRUE),
     ('TechCorp', 'techcorp', TRUE),
     ('DataSolutions', 'datasolutions', TRUE),
     ('CloudInnovate', 'cloudinnovate', TRUE),
@@ -17,62 +18,65 @@ ON CONFLICT (name) DO NOTHING;
 
 -- 2. Insérer des clients de test (numéros commençant par 0699 pour identifier facilement les tests)
 INSERT INTO clients (phone_number, first_name, last_name, box_model, company_id) VALUES
+    -- Total - Client principal
+    ('0781833134', 'Clément', 'DUMAS', 'ER605 OMADA', (SELECT id FROM companies WHERE name = 'Total')),
+
     -- TechCorp (company_id sera résolu dynamiquement)
-    ('0699111001', 'Thomas', 'Lefebvre', 'Livebox 6', (SELECT id FROM companies WHERE name = 'TechCorp')),
-    ('0699111002', 'Emma', 'Rousseau', 'Freebox Delta', (SELECT id FROM companies WHERE name = 'TechCorp')),
-    ('0699111003', 'Lucas', 'Garcia', 'SFR Box 8', (SELECT id FROM companies WHERE name = 'TechCorp')),
+    ('0699111001', 'Thomas', 'Lefebvre', 'UniFi Dream Machine', (SELECT id FROM companies WHERE name = 'TechCorp')),
+    ('0699111002', 'Emma', 'Rousseau', 'ER605 OMADA', (SELECT id FROM companies WHERE name = 'TechCorp')),
+    ('0699111003', 'Lucas', 'Garcia', 'EdgeRouter X', (SELECT id FROM companies WHERE name = 'TechCorp')),
 
     -- DataSolutions
-    ('0699222001', 'Camille', 'Petit', 'Bbox Ultym', (SELECT id FROM companies WHERE name = 'DataSolutions')),
-    ('0699222002', 'Antoine', 'Robert', 'Livebox 5', (SELECT id FROM companies WHERE name = 'DataSolutions')),
-    ('0699222003', 'Julie', 'Richard', 'Freebox Revolution', (SELECT id FROM companies WHERE name = 'DataSolutions')),
+    ('0699222001', 'Camille', 'Petit', 'UniFi Security Gateway', (SELECT id FROM companies WHERE name = 'DataSolutions')),
+    ('0699222002', 'Antoine', 'Robert', 'ER7206 OMADA', (SELECT id FROM companies WHERE name = 'DataSolutions')),
+    ('0699222003', 'Julie', 'Richard', 'UniFi Dream Router', (SELECT id FROM companies WHERE name = 'DataSolutions')),
 
     -- CloudInnovate
-    ('0699333001', 'Alexandre', 'Durand', 'SFR Box 7', (SELECT id FROM companies WHERE name = 'CloudInnovate')),
-    ('0699333002', 'Sarah', 'Moreau', 'Livebox 6', (SELECT id FROM companies WHERE name = 'CloudInnovate')),
-    ('0699333003', 'Nicolas', 'Simon', 'Freebox Pop', (SELECT id FROM companies WHERE name = 'CloudInnovate')),
+    ('0699333001', 'Alexandre', 'Durand', 'EdgeRouter 4', (SELECT id FROM companies WHERE name = 'CloudInnovate')),
+    ('0699333002', 'Sarah', 'Moreau', 'ER605 OMADA', (SELECT id FROM companies WHERE name = 'CloudInnovate')),
+    ('0699333003', 'Nicolas', 'Simon', 'UniFi Dream Machine Pro', (SELECT id FROM companies WHERE name = 'CloudInnovate')),
 
     -- SecureNet
-    ('0699444001', 'Laura', 'Laurent', 'Bbox Must', (SELECT id FROM companies WHERE name = 'SecureNet')),
-    ('0699444002', 'Maxime', 'Michel', 'Livebox 6', (SELECT id FROM companies WHERE name = 'SecureNet')),
-    ('0699444003', 'Chloé', 'Leroy', 'Freebox Delta', (SELECT id FROM companies WHERE name = 'SecureNet')),
+    ('0699444001', 'Laura', 'Laurent', 'UniFi Security Gateway Pro', (SELECT id FROM companies WHERE name = 'SecureNet')),
+    ('0699444002', 'Maxime', 'Michel', 'ER7206 OMADA', (SELECT id FROM companies WHERE name = 'SecureNet')),
+    ('0699444003', 'Chloé', 'Leroy', 'EdgeRouter 6P', (SELECT id FROM companies WHERE name = 'SecureNet')),
 
     -- MediaPlus
-    ('0699555001', 'Hugo', 'Fontaine', 'SFR Box 8', (SELECT id FROM companies WHERE name = 'MediaPlus')),
-    ('0699555002', 'Léa', 'Chevalier', 'Livebox 5', (SELECT id FROM companies WHERE name = 'MediaPlus')),
-    ('0699555003', 'Arthur', 'Girard', 'Freebox Revolution', (SELECT id FROM companies WHERE name = 'MediaPlus')),
+    ('0699555001', 'Hugo', 'Fontaine', 'UniFi Dream Machine', (SELECT id FROM companies WHERE name = 'MediaPlus')),
+    ('0699555002', 'Léa', 'Chevalier', 'ER605 OMADA', (SELECT id FROM companies WHERE name = 'MediaPlus')),
+    ('0699555003', 'Arthur', 'Girard', 'UniFi Dream Router', (SELECT id FROM companies WHERE name = 'MediaPlus')),
 
     -- AutoConnect
-    ('0699666001', 'Manon', 'Bonnet', 'Bbox Ultym', (SELECT id FROM companies WHERE name = 'AutoConnect')),
-    ('0699666002', 'Théo', 'Blanc', 'Livebox 6', (SELECT id FROM companies WHERE name = 'AutoConnect')),
-    ('0699666003', 'Clara', 'Garnier', 'Freebox Pop', (SELECT id FROM companies WHERE name = 'AutoConnect')),
+    ('0699666001', 'Manon', 'Bonnet', 'EdgeRouter X', (SELECT id FROM companies WHERE name = 'AutoConnect')),
+    ('0699666002', 'Théo', 'Blanc', 'ER7206 OMADA', (SELECT id FROM companies WHERE name = 'AutoConnect')),
+    ('0699666003', 'Clara', 'Garnier', 'UniFi Security Gateway', (SELECT id FROM companies WHERE name = 'AutoConnect')),
 
     -- HealthCare Services
-    ('0699777001', 'Louis', 'Faure', 'SFR Box 7', (SELECT id FROM companies WHERE name = 'HealthCare Services')),
-    ('0699777002', 'Inès', 'André', 'Livebox 6', (SELECT id FROM companies WHERE name = 'HealthCare Services')),
-    ('0699777003', 'Gabriel', 'Mercier', 'Freebox Delta', (SELECT id FROM companies WHERE name = 'HealthCare Services')),
+    ('0699777001', 'Louis', 'Faure', 'UniFi Dream Machine Pro', (SELECT id FROM companies WHERE name = 'HealthCare Services')),
+    ('0699777002', 'Inès', 'André', 'ER605 OMADA', (SELECT id FROM companies WHERE name = 'HealthCare Services')),
+    ('0699777003', 'Gabriel', 'Mercier', 'EdgeRouter 4', (SELECT id FROM companies WHERE name = 'HealthCare Services')),
 
     -- EduTech
-    ('0699888001', 'Océane', 'Renard', 'Bbox Must', (SELECT id FROM companies WHERE name = 'EduTech')),
-    ('0699888002', 'Nathan', 'Barbier', 'Livebox 5', (SELECT id FROM companies WHERE name = 'EduTech')),
-    ('0699888003', 'Mathilde', 'Arnaud', 'Freebox Revolution', (SELECT id FROM companies WHERE name = 'EduTech')),
+    ('0699888001', 'Océane', 'Renard', 'UniFi Dream Router', (SELECT id FROM companies WHERE name = 'EduTech')),
+    ('0699888002', 'Nathan', 'Barbier', 'ER7206 OMADA', (SELECT id FROM companies WHERE name = 'EduTech')),
+    ('0699888003', 'Mathilde', 'Arnaud', 'UniFi Security Gateway Pro', (SELECT id FROM companies WHERE name = 'EduTech')),
 
     -- FinanceGroup
-    ('0699999001', 'Raphaël', 'Gaillard', 'SFR Box 8', (SELECT id FROM companies WHERE name = 'FinanceGroup')),
-    ('0699999002', 'Zoé', 'Brun', 'Livebox 6', (SELECT id FROM companies WHERE name = 'FinanceGroup')),
-    ('0699999003', 'Ethan', 'Roux', 'Freebox Pop', (SELECT id FROM companies WHERE name = 'FinanceGroup')),
+    ('0699999001', 'Raphaël', 'Gaillard', 'EdgeRouter 6P', (SELECT id FROM companies WHERE name = 'FinanceGroup')),
+    ('0699999002', 'Zoé', 'Brun', 'ER605 OMADA', (SELECT id FROM companies WHERE name = 'FinanceGroup')),
+    ('0699999003', 'Ethan', 'Roux', 'UniFi Dream Machine', (SELECT id FROM companies WHERE name = 'FinanceGroup')),
 
     -- RetailExpress
-    ('0699000001', 'Lina', 'Morel', 'Bbox Ultym', (SELECT id FROM companies WHERE name = 'RetailExpress')),
-    ('0699000002', 'Adam', 'Fournier', 'Livebox 6', (SELECT id FROM companies WHERE name = 'RetailExpress')),
-    ('0699000003', 'Jade', 'Giraud', 'Freebox Delta', (SELECT id FROM companies WHERE name = 'RetailExpress')),
+    ('0699000001', 'Lina', 'Morel', 'UniFi Dream Router', (SELECT id FROM companies WHERE name = 'RetailExpress')),
+    ('0699000002', 'Adam', 'Fournier', 'ER7206 OMADA', (SELECT id FROM companies WHERE name = 'RetailExpress')),
+    ('0699000003', 'Jade', 'Giraud', 'EdgeRouter X', (SELECT id FROM companies WHERE name = 'RetailExpress')),
 
     -- Clients sans entreprise (pour tester le flow d'identification complet)
-    ('0698000001', 'Marc', 'Vidal', 'Livebox 5', NULL),
-    ('0698000002', 'Sophie', 'Martinez', 'Freebox Revolution', NULL),
-    ('0698000003', 'David', 'Lopez', 'SFR Box 7', NULL),
-    ('0698000004', 'Caroline', 'Gonzalez', 'Bbox Must', NULL),
-    ('0698000005', 'Paul', 'Perez', 'Livebox 6', NULL)
+    ('0698000001', 'Marc', 'Vidal', 'ER605 OMADA', NULL),
+    ('0698000002', 'Sophie', 'Martinez', 'UniFi Security Gateway', NULL),
+    ('0698000003', 'David', 'Lopez', 'EdgeRouter 4', NULL),
+    ('0698000004', 'Caroline', 'Gonzalez', 'UniFi Dream Machine', NULL),
+    ('0698000005', 'Paul', 'Perez', 'ER7206 OMADA', NULL)
 ON CONFLICT (phone_number) DO NOTHING;
 
 -- Afficher un résumé

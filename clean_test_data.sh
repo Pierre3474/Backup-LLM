@@ -34,10 +34,10 @@ echo "🗑️  Suppression des clients de test..."
 
 # Supprimer les clients de test
 docker exec -i voicebot-db-clients psql -U voicebot -d db_clients <<-EOF
-    -- Supprimer les clients de test
-    DELETE FROM clients WHERE phone_number LIKE '0699%' OR phone_number LIKE '0698%';
+    -- Supprimer les clients de test (SAUF Clément DUMAS 0781833134)
+    DELETE FROM clients WHERE (phone_number LIKE '0699%' OR phone_number LIKE '0698%') AND phone_number != '0781833134';
 
-    -- Supprimer les entreprises de test (optionnel)
+    -- Supprimer les entreprises de test (optionnel, SAUF Total)
     DELETE FROM companies WHERE name IN (
         'TechCorp', 'DataSolutions', 'CloudInnovate', 'SecureNet', 'MediaPlus',
         'AutoConnect', 'HealthCare Services', 'EduTech', 'FinanceGroup', 'RetailExpress'
