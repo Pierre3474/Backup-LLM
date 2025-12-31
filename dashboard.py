@@ -5,10 +5,10 @@ import io
 from pathlib import Path
 from datetime import datetime
 
-import psycopg2
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
+from sqlalchemy import create_engine
 
 # Chargement de la configuration
 load_dotenv()
@@ -18,41 +18,25 @@ st.set_page_config(page_title="Wipple SAV Cockpit", layout="wide")
 LOGS_DIR = Path("logs/calls")
 
 # ============================================
-# SÉCURITÉ : Validation IP (OPTIONNELLE)
+# SÉCURITÉ : Validation IP (SILENCIEUSE)
 # ============================================
 
 def get_client_ip():
     """Récupère l'IP réelle du client depuis les headers de la requête"""
     try:
-        # Essayer de récupérer depuis streamlit
-        from streamlit.runtime.scriptrunner import get_script_run_ctx
+        # Essayer de récupérer depuis streamlit context
+        if hasattr(st, 'context') and hasattr(st.context, 'headers'):
+            headers = st.context.headers
 
-        ctx = get_script_run_ctx()
-        if ctx is None:
-            return None
+            # X-Forwarded-For (proxy/reverse proxy)
+            forwarded_for = headers.get("X-Forwarded-For")
+            if forwarded_for:
+                return forwarded_for.split(',')[0].strip()
 
-        # Essayer les headers
-        try:
-            from streamlit.web.server.websocket_headers import _get_websocket_headers
-            headers = _get_websocket_headers()
-
-            if headers:
-                # X-Forwarded-For (proxy/reverse proxy)
-                forwarded_for = headers.get("X-Forwarded-For")
-                if forwarded_for:
-                    return forwarded_for.split(',')[0].strip()
-
-                # X-Real-IP (nginx)
-                real_ip = headers.get("X-Real-IP")
-                if real_ip:
-                    return real_ip.strip()
-
-                # Remote-Addr
-                remote_addr = headers.get("Remote-Addr")
-                if remote_addr:
-                    return remote_addr.strip()
-        except Exception:
-            pass
+            # X-Real-IP (nginx)
+            real_ip = headers.get("X-Real-IP")
+            if real_ip:
+                return real_ip.strip()
 
         return None
     except Exception:
@@ -60,14 +44,13 @@ def get_client_ip():
 
 
 def validate_ip_access():
-    """Valide que l'IP du visiteur est autorisée (si PERSONAL_IP est configuré)"""
+    """Valide que l'IP du visiteur est autorisée (si PERSONAL_IP est configuré) - Mode silencieux"""
     # Récupérer la liste des IPs autorisées depuis .env
     allowed_ips_str = os.getenv("PERSONAL_IP", "")
 
     # Si PERSONAL_IP n'est pas configuré, on désactive la validation
     if not allowed_ips_str or allowed_ips_str == "":
-        st.info("ℹ️ Validation IP désactivée (PERSONAL_IP non configuré)")
-        return True
+        return True  # Pas de message, juste laisser passer
 
     # Parser les IPs autorisées (séparées par virgules)
     allowed_ips = [ip.strip() for ip in allowed_ips_str.split(',') if ip.strip()]
@@ -76,27 +59,23 @@ def validate_ip_access():
     client_ip = get_client_ip()
 
     if client_ip is None:
-        # Si on ne peut pas déterminer l'IP, on affiche un avertissement mais on laisse passer
-        st.warning("⚠️ Impossible de déterminer votre adresse IP")
-        st.caption("Validation IP ignorée pour cette session")
+        # Si on ne peut pas déterminer l'IP, on laisse passer silencieusement
         return True
 
     # Vérifier si l'IP est autorisée
     if client_ip not in allowed_ips:
         st.error(f"🚫 ACCÈS REFUSÉ")
-        st.warning(f"Votre IP ({client_ip}) n'est pas autorisée à accéder à ce dashboard.")
-        st.info("IPs autorisées: " + ", ".join(allowed_ips))
+        st.warning("Votre adresse IP n'est pas autorisée à accéder à ce dashboard.")
         st.caption("Contactez l'administrateur système pour obtenir l'accès.")
         st.stop()
         return False
 
-    # Accès autorisé
-    st.success(f"✅ Accès autorisé depuis {client_ip}")
+    # Accès autorisé - SILENCIEUX (pas de message)
     return True
 
 
-def get_db_connection():
-    """Établit la connexion à la base de données PostgreSQL"""
+def get_db_engine():
+    """Établit la connexion à la base de données PostgreSQL avec SQLAlchemy"""
     try:
         db_dsn = os.getenv("DB_TICKETS_DSN")
 
@@ -108,14 +87,14 @@ DB_TICKETS_DSN=postgresql://voicebot:votre_mot_de_passe@postgres-tickets:5432/db
             """)
             return None
 
-        return psycopg2.connect(db_dsn)
-    except psycopg2.OperationalError as e:
+        # Créer un engine SQLAlchemy (recommandé par pandas)
+        engine = create_engine(db_dsn)
+        return engine
+
+    except Exception as e:
         st.error(f"❌ Erreur de connexion à la base de données")
         st.code(f"Détails: {str(e)}")
         st.info("Vérifiez que PostgreSQL est démarré et que DB_TICKETS_DSN est correct")
-        return None
-    except Exception as e:
-        st.error(f"❌ Erreur inattendue: {e}")
         return None
 
 
@@ -156,13 +135,13 @@ def find_audio_file(call_uuid):
 
 st.title("🎛️ Supervision SAV Wipple")
 
-# Vérifier l'accès IP (optionnel)
+# Vérifier l'accès IP (silencieux)
 validate_ip_access()
 
 # Connexion à la base de données
-conn = get_db_connection()
+engine = get_db_engine()
 
-if not conn:
+if not engine:
     st.error("🚫 Impossible de se connecter à la base de données")
     st.info("Le dashboard ne peut pas fonctionner sans connexion DB")
 
@@ -205,7 +184,7 @@ docker restart voicebot-dashboard
 # Base de données connectée
 try:
     # Vérifier que la table tickets existe
-    test_query = pd.read_sql("SELECT COUNT(*) FROM tickets", conn)
+    test_query = pd.read_sql("SELECT COUNT(*) FROM tickets", engine)
     tickets_count = test_query.iloc[0, 0]
 
     st.success(f"✅ Connecté à la base de données ({tickets_count} tickets)")
@@ -217,42 +196,38 @@ try:
     # Appels du jour
     try:
         count = pd.read_sql(
-            "SELECT COUNT(*) FROM tickets WHERE DATE(created_at) = CURRENT_DATE", conn
+            "SELECT COUNT(*) FROM tickets WHERE DATE(created_at) = CURRENT_DATE", engine
         ).iloc[0, 0]
         col1.metric("Appels du Jour", count)
     except Exception as e:
         col1.metric("Appels du Jour", "❌")
-        st.error(f"Erreur KPI 'Appels du jour': {e}")
 
     # Durée moyenne
     try:
         avg = pd.read_sql(
-            "SELECT COALESCE(AVG(duration_seconds),0) FROM tickets", conn
+            "SELECT COALESCE(AVG(duration_seconds),0) FROM tickets", engine
         ).iloc[0, 0]
         col2.metric("Durée Moyenne", f"{int(avg)}s")
     except Exception as e:
         col2.metric("Durée Moyenne", "❌")
-        st.error(f"Erreur KPI 'Durée moyenne': {e}")
 
     # Clients mécontents
     try:
         angry = pd.read_sql(
-            "SELECT COUNT(*) FROM tickets WHERE sentiment = 'negative'", conn
+            "SELECT COUNT(*) FROM tickets WHERE sentiment = 'negative'", engine
         ).iloc[0, 0]
         col3.metric("Clients Mécontents", angry, delta_color="inverse")
     except Exception as e:
         col3.metric("Clients Mécontents", "❌")
-        st.error(f"Erreur KPI 'Clients mécontents': {e}")
 
     # Pannes Internet
     try:
         internet = pd.read_sql(
-            "SELECT COUNT(*) FROM tickets WHERE problem_type = 'internet'", conn
+            "SELECT COUNT(*) FROM tickets WHERE problem_type = 'internet'", engine
         ).iloc[0, 0]
         col4.metric("Pannes Internet", internet)
     except Exception as e:
         col4.metric("Pannes Internet", "❌")
-        st.error(f"Erreur KPI 'Pannes Internet': {e}")
 
     # 2. Liste des tickets avec lecture audio
     st.subheader("📋 Derniers Tickets & Enregistrements")
@@ -276,7 +251,7 @@ try:
             ORDER BY created_at DESC
             LIMIT 50
             """,
-            conn,
+            engine,
         )
 
         if len(df) == 0:
@@ -341,5 +316,5 @@ except Exception as e:
         st.code(traceback.format_exc())
 
 finally:
-    if conn:
-        conn.close()
+    if engine:
+        engine.dispose()
