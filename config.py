@@ -78,6 +78,11 @@ CACHED_PHRASES = {
     "greet": "Bonjour et bienvenue au service support technique de chez Wipple.",
     "welcome": "Je suis Eko, votre assistant virtuel. Je vais vous aider à enregistrer votre demande afin de vous dépanner rapidement.",
 
+    # --- Clients qui rappellent (optimisé vitesse) ---
+    "returning_client_pending_internet": "Bonjour, je suis Eko. Vous avez un ticket ouvert concernant votre connexion. Est-ce à ce sujet ?",
+    "returning_client_pending_mobile": "Bonjour, je suis Eko. Vous avez un ticket ouvert concernant votre mobile. Est-ce à ce sujet ?",
+    "returning_client_no_ticket": "Bonjour, je vous reconnais. Je suis Eko. Comment puis-je vous aider ?",
+
     # --- Identification ---
     "ask_identity": "Pour commencer, pouvez-vous me donner votre nom, votre prénom, ainsi que le nom de votre entreprise, s'il vous plaît ?",
     "ask_firstname": "Quel est votre prénom ?",
