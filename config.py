@@ -75,7 +75,7 @@ BUSINESS_SCHEDULE = {
 # === Phrases pré-cachées (8kHz) ===
 CACHED_PHRASES = {
     # --- Accueil ---
-    "greet": "Bonjour, et bienvenue au service technique de chez Ouipple.",
+    "greet": "Bonjour, et bienvenue au service technique de chez Wipple.",
     "welcome": "Je suis Éco, votre assistant virtuel. Je vais vous aider à enregistrer votre demande, afin de vous dépanner rapidement.",
 
     # --- Clients qui rappellent (optimisé vitesse) ---
@@ -86,9 +86,9 @@ CACHED_PHRASES = {
     # --- Identification ---
     "ask_identity": "Pour commencer, pouvez-vous me donner votre nom, votre prénom, ainsi que le nom de votre entreprise, s'il vous plaît ?",
     "ask_firstname": "Quel est votre prénom ?",
-    "ask_email": "Pouvez-vous m'épeler votre adresse mél, afin de créer un dossier ?",
+    "ask_email": "Pouvez-vous m'épeler votre adresse email, afin de créer un dossier ?",
     "ask_company": "Quel est le nom de votre entreprise ?",
-    "email_invalid": "L'adresse que vous avez donnée semble incorrecte. Pouvez-vous la répéter ?",
+    "email_invalid": "L'adresse email que vous avez donnée semble incorrecte. Pouvez-vous la répéter ?",
 
     # --- Type de problème ---
     "ask_problem_or_modif": "Merci. S'agit-il d'une panne technique, ou d'une demande de modification sur votre installation ?",
@@ -116,11 +116,11 @@ CACHED_PHRASES = {
     # --- Escalade technicien ---
     "transfer": "Je vous transfère à un technicien. Ne raccrochez pas.",
     "ticket_transfer_ok": "Très bien. Je vous transfère immédiatement à un technicien, qui va prendre la suite.",
-    "offer_email_transfer": "Je peux vous envoyer un mél avec les détails du problème, et vous serez rappelé dans les plus brefs délais.",
+    "offer_email_transfer": "Je peux vous envoyer un email avec les détails du problème, et vous serez rappelé dans les plus brefs délais.",
 
     # --- Création de ticket ---
     "confirm_ticket": "Très bien. J'ai bien enregistré votre demande. Je procède maintenant à la création de votre dossier.",
-    "ticket_created": "Votre dossier a été créé avec succès. Vous allez recevoir un mél de confirmation, avec le numéro de dossier.",
+    "ticket_created": "Votre dossier a été créé avec succès. Vous allez recevoir un email de confirmation, avec le numéro de dossier.",
 
     # --- Suivi ticket existant ---
     "ticket_not_related": "D'accord. Quel est votre problème aujourd'hui ?",
