@@ -110,7 +110,12 @@ class ConversationState(Enum):
     INIT = "init"
     WELCOME = "welcome"
     TICKET_VERIFICATION = "ticket_verification"
-    IDENTIFICATION = "identification"
+    IDENTIFICATION = "identification"  # Demande prénom
+    SPELL_NAME = "spell_name"  # Demande épellation du nom
+    COMPANY_INPUT = "company_input"  # Demande entreprise
+    EMAIL_INPUT = "email_input"  # Demande email
+    NAME_CONFIRMATION = "name_confirmation"  # Confirmation du nom
+    COMPANY_CONFIRMATION = "company_confirmation"  # Confirmation de l'entreprise
     DIAGNOSTIC = "diagnostic"
     SOLUTION = "solution"
     VERIFICATION = "verification"
@@ -939,10 +944,14 @@ class CallHandler:
                     ticket = pending_tickets[0]
                     problem_type_fr = "connexion" if ticket['problem_type'] == "internet" else "mobile"
 
+                    # Formater le nombre d'appels correctement (1 fois → une fois)
+                    call_count = len(client_history)
+                    fois_text = "une fois" if call_count == 1 else f"{call_count} fois"
+
                     # ARCHITECTURE HYBRIDE
                     await self._say_hybrid(
                         "greet",
-                        f"Je vois que vous avez déjà appelé {len(client_history)} fois. "
+                        f"Je vois que vous avez déjà appelé {fois_text}. "
                         f"Je suis Eko. Vous avez un ticket ouvert concernant votre {problem_type_fr}. Est-ce à ce sujet ?"
                     )
                     logger.info(f"[{self.call_id}] Returning client with pending ticket: {ticket['id']}")
@@ -953,9 +962,13 @@ class CallHandler:
 
                 else:
                     # Client récurrent sans ticket en attente - ARCHITECTURE HYBRIDE
+                    # Formater le nombre d'appels correctement (1 fois → une fois)
+                    call_count = len(client_history)
+                    fois_text = "une fois" if call_count == 1 else f"{call_count} fois"
+
                     await self._say_hybrid(
                         "greet",
-                        f"Je vous reconnais, vous avez déjà appelé {len(client_history)} fois. Je suis Eko. Comment puis-je vous aider ?"
+                        f"Je vous reconnais, vous avez déjà appelé {fois_text}. Je suis Eko. Comment puis-je vous aider ?"
                     )
                     logger.info(f"[{self.call_id}] Returning client welcome ({len(client_history)} previous calls)")
                     self.state = ConversationState.DIAGNOSTIC
@@ -1060,7 +1073,7 @@ class CallHandler:
                     await self._say_dynamic(clarification)
 
             elif self.state == ConversationState.WELCOME:
-                # Demander l'identification
+                # Demander le prénom
                 response = await self._ask_llm(
                     user_text,
                     system_prompt=construct_system_prompt(client_info, client_history)
@@ -1069,24 +1082,74 @@ class CallHandler:
                 self.state = ConversationState.IDENTIFICATION
 
             elif self.state == ConversationState.IDENTIFICATION:
-                # --- MODIFICATION START ---
-                # On tente de nettoyer le texte pour voir s'il contient un email
-                cleaned_info = clean_email_text(user_text)
-                
-                # Si le nettoyage a changé le texte (c'est donc probablement un email), on garde le propre
-                if cleaned_info != user_text and "@" in cleaned_info:
-                    logger.info(f"[{self.call_id}] Email detected and cleaned: {cleaned_info}")
-                    self.context['user_info'] = cleaned_info
-                else:
-                    self.context['user_info'] = user_text
-                # --- MODIFICATION END ---
+                # Stocke le prénom et demande l'épellation du nom
+                self.context['first_name'] = user_text.strip().title()
+                logger.info(f"[{self.call_id}] First name collected: {self.context['first_name']}")
 
-                response = await self._ask_llm(
-                    user_text,
-                    system_prompt=construct_system_prompt(client_info, client_history)
-                )
-                await self._say_dynamic(response)
-                self.state = ConversationState.DIAGNOSTIC
+                await self._say_dynamic("Pourriez-vous épeler votre nom de famille lettre par lettre ?")
+                self.state = ConversationState.SPELL_NAME
+
+            elif self.state == ConversationState.SPELL_NAME:
+                # Stocke le nom épelé et demande l'entreprise
+                # Nettoyer l'épellation (enlever espaces, tirets, etc.)
+                spelled_name = user_text.upper().replace(" ", "").replace("-", "")
+                self.context['last_name'] = spelled_name
+                logger.info(f"[{self.call_id}] Last name spelled: {spelled_name}")
+
+                await self._say_dynamic("Merci. De quelle entreprise appelez-vous ?")
+                self.state = ConversationState.COMPANY_INPUT
+
+            elif self.state == ConversationState.COMPANY_INPUT:
+                # Stocke l'entreprise et demande l'email
+                self.context['company'] = user_text.strip()
+                logger.info(f"[{self.call_id}] Company collected: {self.context['company']}")
+
+                await self._say_dynamic("Et quelle est votre adresse email ?")
+                self.state = ConversationState.EMAIL_INPUT
+
+            elif self.state == ConversationState.EMAIL_INPUT:
+                # Stocke l'email et passe à la confirmation du nom
+                cleaned_email = clean_email_text(user_text)
+                if "@" in cleaned_email:
+                    self.context['email'] = cleaned_email
+                    logger.info(f"[{self.call_id}] Email collected: {cleaned_email}")
+                else:
+                    self.context['email'] = user_text.strip()
+                    logger.warning(f"[{self.call_id}] Email may be invalid: {user_text}")
+
+                # Phase de confirmation du nom
+                full_name = f"{self.context['first_name']} {self.context['last_name']}"
+                await self._say_dynamic(f"D'accord, bonjour {full_name}, c'est bien ça ?")
+                self.state = ConversationState.NAME_CONFIRMATION
+
+            elif self.state == ConversationState.NAME_CONFIRMATION:
+                # Vérifier la confirmation du nom
+                user_lower = user_text.lower()
+                if any(word in user_lower for word in ["oui", "exact", "correct", "c'est ça", "affirmatif", "tout à fait"]):
+                    # Nom confirmé, passer à la confirmation de l'entreprise
+                    company = self.context.get('company', '')
+                    await self._say_dynamic(f"Vous êtes bien de la société {company} ?")
+                    self.state = ConversationState.COMPANY_CONFIRMATION
+                else:
+                    # Nom incorrect, redemander
+                    await self._say_dynamic("Je suis désolé. Pouvez-vous me redonner votre prénom et nom complet ?")
+                    self.state = ConversationState.IDENTIFICATION
+
+            elif self.state == ConversationState.COMPANY_CONFIRMATION:
+                # Vérifier la confirmation de l'entreprise
+                user_lower = user_text.lower()
+                if any(word in user_lower for word in ["oui", "exact", "correct", "c'est ça", "affirmatif", "tout à fait"]):
+                    # Entreprise confirmée, passer au diagnostic avec transition
+                    transition = (
+                        "Je vais vous poser une suite de questions afin que nos techniciens arrivent "
+                        "au mieux à comprendre votre problème. Tout d'abord, pouvez-vous me décrire votre problème ?"
+                    )
+                    await self._say_dynamic(transition)
+                    self.state = ConversationState.DIAGNOSTIC
+                else:
+                    # Entreprise incorrecte, redemander
+                    await self._say_dynamic("Je suis désolé. De quelle entreprise appelez-vous ?")
+                    self.state = ConversationState.COMPANY_INPUT
 
             elif self.state == ConversationState.DIAGNOSTIC:
                 # FILLER pour masquer latence de détection (joué AVANT l'analyse)
