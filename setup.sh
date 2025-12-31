@@ -7,6 +7,7 @@
 #   ./setup.sh              # Mode install (par défaut)
 #   ./setup.sh install      # Mode install (explicite)
 #   ./setup.sh clean        # Mode clean (nettoyage complet)
+#   ./setup.sh reset        # Mode reset (nettoyage + conservation .env)
 #
 # Environnement: Debian 13
 # Exécution: root
@@ -914,6 +915,91 @@ clean_environment() {
 }
 
 ################################################################################
+# Fonction: reset_keep_env
+# Reset complet mais garde le fichier .env (pour mise à jour propre)
+################################################################################
+
+reset_keep_env() {
+    echo ""
+    echo "======================================================================="
+    echo -e "${BLUE}Reset Propre avec Conservation du .env${NC}"
+    echo "======================================================================="
+    echo ""
+
+    log_info "Cette opération va:"
+    echo "  ✓ Arrêter et supprimer TOUS les conteneurs Docker"
+    echo "  ✓ Supprimer TOUS les volumes Docker (données DB effacées)"
+    echo "  ✓ Supprimer les réseaux Docker"
+    echo "  ✓ Supprimer l'environnement virtuel Python"
+    echo "  ✓ Supprimer le cache audio"
+    echo "  ✓ Supprimer les logs"
+    echo ""
+    echo -e "${GREEN}  ✓ CONSERVER le fichier .env (clés API, mots de passe)${NC}"
+    echo ""
+    log_warning "Les données des bases PostgreSQL seront PERDUES"
+    echo ""
+
+    read -p "$(echo -e ${YELLOW}Voulez-vous continuer? [y/N]:${NC} )" -n 1 -r
+    echo ""
+
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Reset annulé"
+        exit 0
+    fi
+
+    # Sauvegarder le .env si présent
+    ENV_BACKUP=""
+    if [[ -f ".env" ]]; then
+        log_info "Sauvegarde du fichier .env..."
+        ENV_BACKUP=$(cat .env)
+        log_success ".env sauvegardé en mémoire"
+    else
+        log_warning "Aucun fichier .env trouvé - rien à sauvegarder"
+    fi
+
+    # Arrêter et supprimer la stack Docker
+    if [[ -f "docker-compose.yml" ]]; then
+        log_info "Arrêt et suppression de la stack Docker (conteneurs + volumes)..."
+        docker compose down -v 2>/dev/null || log_warning "Erreur lors de l'arrêt de Docker"
+    fi
+
+    # Supprimer l'environnement virtuel
+    if [[ -d "venv" ]]; then
+        log_info "Suppression de l'environnement virtuel Python..."
+        rm -rf venv
+    fi
+
+    # Supprimer docker-compose.override.yml (sera régénéré)
+    if [[ -f "docker-compose.override.yml" ]]; then
+        log_info "Suppression de docker-compose.override.yml..."
+        rm -f docker-compose.override.yml
+    fi
+
+    # Supprimer le cache audio
+    if [[ -d "assets/cache" ]]; then
+        log_info "Suppression du cache audio..."
+        rm -rf assets/cache/*
+    fi
+
+    # Supprimer les logs
+    if [[ -d "logs" ]]; then
+        log_info "Suppression des logs..."
+        rm -rf logs/*
+    fi
+
+    # Restaurer le .env
+    if [[ -n "$ENV_BACKUP" ]]; then
+        log_info "Restauration du fichier .env..."
+        echo "$ENV_BACKUP" > .env
+        chmod 600 .env
+        log_success ".env restauré avec succès"
+    fi
+
+    log_success "Reset terminé - .env conservé"
+    echo ""
+}
+
+################################################################################
 # Point d'entrée principal
 ################################################################################
 
@@ -942,13 +1028,35 @@ main() {
                 log_info "Installation non lancée. Utilisez './setup.sh install' pour installer."
             fi
             ;;
+        reset)
+            reset_keep_env
+
+            # Demander si l'utilisateur souhaite réinstaller après le reset
+            echo ""
+            log_info "Le reset est terminé. Vous pouvez maintenant réinstaller proprement."
+            echo ""
+            read -p "$(echo -e ${BLUE}Souhaitez-vous lancer l\'installation maintenant? [Y/n]:${NC} )" -n 1 -r
+            echo ""
+
+            # Par défaut on installe (Y par défaut)
+            if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+                install_full_stack
+            else
+                log_info "Installation non lancée. Utilisez './setup.sh install' pour installer."
+            fi
+            ;;
         *)
             log_error "Mode inconnu: $MODE"
             echo ""
             echo "Usage:"
             echo "  ./setup.sh              # Mode install (par défaut)"
             echo "  ./setup.sh install      # Mode install (explicite)"
-            echo "  ./setup.sh clean        # Mode clean (nettoyage)"
+            echo "  ./setup.sh clean        # Mode clean (nettoyage complet + suppression .env)"
+            echo "  ./setup.sh reset        # Mode reset (nettoyage complet + conservation .env)"
+            echo ""
+            echo "Différences entre clean et reset:"
+            echo "  clean : Supprime TOUT (y compris .env) - Pour repartir de zéro"
+            echo "  reset : Garde le .env - Pour mise à jour ou réinstallation propre"
             exit 1
             ;;
     esac

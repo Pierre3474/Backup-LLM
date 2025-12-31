@@ -82,6 +82,15 @@ telecom_companies:
   - "Lebara:3"
   - "Lycamobile:3"
 
+# === ENTREPRISES CLIENTES ===
+client_companies:
+  - "CARvertical:4"
+  - "Vetodok:4"
+  - "RCF Elec:4"
+  - "L'ONAsoft:4"
+  - "ONAsoft:4"
+  - "SNCF:4"
+
 # === ÉQUIPEMENTS / BOX INTERNET ===
 equipment:
   - "Livebox:3"
