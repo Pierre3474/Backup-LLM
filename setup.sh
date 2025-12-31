@@ -682,16 +682,46 @@ display_summary() {
 
 ################################################################################
 # Fonction: start_voicebot_server
-# Lance le serveur Python voicebot
+# Affiche les informations du serveur voicebot (qui tourne dans Docker)
 ################################################################################
 
 start_voicebot_server() {
-    log_info "Activation de l'environnement virtuel..."
-    source venv/bin/activate
-
-    log_info "Démarrage du serveur voicebot sur le port 9090..."
     echo ""
-    python server.py
+    echo "======================================================================="
+    log_success "✅ Serveur voicebot démarré dans Docker"
+    echo "======================================================================="
+    echo ""
+    log_info "Le serveur voicebot tourne dans les conteneurs Docker:"
+    echo ""
+    echo "  📦 Conteneurs actifs:"
+    echo "     - voicebot-app       (serveur principal sur port 9090)"
+    echo "     - postgres-clients   (base de données clients)"
+    echo "     - postgres-tickets   (base de données tickets)"
+    echo ""
+    echo "  📊 Commandes utiles:"
+    echo ""
+    echo "     Voir les logs du voicebot:"
+    echo "       ${BLUE}docker logs -f voicebot-app${NC}"
+    echo ""
+    echo "     Voir les logs avec emojis (débogage):"
+    echo "       ${BLUE}docker logs -f voicebot-app | grep -E '👤|🤖|🔊'${NC}"
+    echo ""
+    echo "     Vérifier l'état des conteneurs:"
+    echo "       ${BLUE}docker ps${NC}"
+    echo ""
+    echo "     Redémarrer le voicebot:"
+    echo "       ${BLUE}docker restart voicebot-app${NC}"
+    echo ""
+    echo "     Arrêter tous les conteneurs:"
+    echo "       ${BLUE}docker compose down${NC}"
+    echo ""
+    echo "     Redémarrer tous les conteneurs:"
+    echo "       ${BLUE}docker compose up -d${NC}"
+    echo ""
+    echo "======================================================================="
+    log_info "Le serveur est prêt à recevoir des appels sur le port 9090"
+    echo "======================================================================="
+    echo ""
 }
 
 ################################################################################
