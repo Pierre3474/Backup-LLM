@@ -85,7 +85,7 @@
           "refId": "A"
         }
       ],
-      "title": "💰 Coût Moyen par Appel",
+      "title": "Coût Moyen par Appel",
       "type": "stat"
     },
     {
@@ -148,7 +148,7 @@
           "refId": "A"
         }
       ],
-      "title": "💎 Économies vs Agent Humain",
+      "title": "Économies vs Agent Humain",
       "type": "stat"
     },
     {
@@ -219,7 +219,7 @@
           "refId": "A"
         }
       ],
-      "title": "✅ Taux de Résolution Automatique",
+      "title": "Taux de Résolution Automatique",
       "type": "stat"
     },
     {
@@ -286,7 +286,7 @@
           "refId": "A"
         }
       ],
-      "title": "🚀 Optimisation Cache TTS",
+      "title": "Optimisation Cache TTS",
       "type": "stat"
     },
     {
@@ -378,7 +378,7 @@
           "refId": "A"
         }
       ],
-      "title": "📞 Volume d'Appels",
+      "title": "Volume d'Appels",
       "type": "timeseries"
     },
     {
@@ -446,7 +446,7 @@
           "refId": "A"
         }
       ],
-      "title": "🔧 Distribution des Problèmes",
+      "title": "Distribution des Problèmes",
       "type": "piechart"
     },
     {
@@ -561,7 +561,7 @@
           "refId": "A"
         }
       ],
-      "title": "😊 Satisfaction Client",
+      "title": "Satisfaction Client",
       "type": "piechart"
     },
     {
@@ -632,7 +632,7 @@
           "refId": "A"
         }
       ],
-      "title": "⏱️ Temps Moyen de Traitement",
+      "title": "Temps Moyen de Traitement",
       "type": "stat"
     },
     {
@@ -785,7 +785,7 @@
           "refId": "A"
         }
       ],
-      "title": "🎫 Tickets par Sévérité",
+      "title": "Tickets par Sévérité",
       "type": "timeseries"
     },
     {
@@ -902,7 +902,7 @@
           "refId": "C"
         }
       ],
-      "title": "💸 Répartition des Coûts API",
+      "title": "Répartition des Coûts API",
       "type": "timeseries"
     }
   ],

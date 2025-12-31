@@ -64,7 +64,7 @@ def validate_ip_access():
 
     # Vérifier si l'IP est autorisée
     if client_ip not in allowed_ips:
-        st.error(f"🚫 ACCÈS REFUSÉ")
+        st.error("ACCÈS REFUSÉ")
         st.warning("Votre adresse IP n'est pas autorisée à accéder à ce dashboard.")
         st.caption("Contactez l'administrateur système pour obtenir l'accès.")
         st.stop()
@@ -80,7 +80,7 @@ def get_db_engine():
         db_dsn = os.getenv("DB_TICKETS_DSN")
 
         if not db_dsn:
-            st.error("❌ DB_TICKETS_DSN non configuré dans .env")
+            st.error("DB_TICKETS_DSN non configuré dans .env")
             st.code("""
 # Ajoutez ceci dans votre fichier .env :
 DB_TICKETS_DSN=postgresql://voicebot:votre_mot_de_passe@postgres-tickets:5432/db_tickets
@@ -92,7 +92,7 @@ DB_TICKETS_DSN=postgresql://voicebot:votre_mot_de_passe@postgres-tickets:5432/db
         return engine
 
     except Exception as e:
-        st.error(f"❌ Erreur de connexion à la base de données")
+        st.error("Erreur de connexion à la base de données")
         st.code(f"Détails: {str(e)}")
         st.info("Vérifiez que PostgreSQL est démarré et que DB_TICKETS_DSN est correct")
         return None
@@ -133,7 +133,7 @@ def find_audio_file(call_uuid):
 # INTERFACE PRINCIPALE
 # ============================================
 
-st.title("🎛️ Supervision SAV Wipple")
+st.title("Supervision SAV Wipple")
 
 # Vérifier l'accès IP (silencieux)
 validate_ip_access()
@@ -142,11 +142,11 @@ validate_ip_access()
 engine = get_db_engine()
 
 if not engine:
-    st.error("🚫 Impossible de se connecter à la base de données")
+    st.error("Impossible de se connecter à la base de données")
     st.info("Le dashboard ne peut pas fonctionner sans connexion DB")
 
     # Instructions de configuration
-    with st.expander("📋 Instructions de Configuration"):
+    with st.expander("Instructions de Configuration"):
         st.markdown("""
 ### Configuration Requise
 
@@ -187,10 +187,10 @@ try:
     test_query = pd.read_sql("SELECT COUNT(*) FROM tickets", engine)
     tickets_count = test_query.iloc[0, 0]
 
-    st.success(f"✅ Connecté à la base de données ({tickets_count} tickets)")
+    st.success(f"Connecté à la base de données ({tickets_count} tickets)")
 
     # 1. KPIs (Indicateurs Clés)
-    st.subheader("📊 Indicateurs Clés")
+    st.subheader("Indicateurs Clés")
     col1, col2, col3, col4 = st.columns(4)
 
     # Appels du jour
@@ -200,7 +200,7 @@ try:
         ).iloc[0, 0]
         col1.metric("Appels du Jour", count)
     except Exception as e:
-        col1.metric("Appels du Jour", "❌")
+        col1.metric("Appels du Jour", "N/A")
 
     # Durée moyenne
     try:
@@ -209,7 +209,7 @@ try:
         ).iloc[0, 0]
         col2.metric("Durée Moyenne", f"{int(avg)}s")
     except Exception as e:
-        col2.metric("Durée Moyenne", "❌")
+        col2.metric("Durée Moyenne", "N/A")
 
     # Clients mécontents
     try:
@@ -218,7 +218,7 @@ try:
         ).iloc[0, 0]
         col3.metric("Clients Mécontents", angry, delta_color="inverse")
     except Exception as e:
-        col3.metric("Clients Mécontents", "❌")
+        col3.metric("Clients Mécontents", "N/A")
 
     # Pannes Internet
     try:
@@ -227,10 +227,10 @@ try:
         ).iloc[0, 0]
         col4.metric("Pannes Internet", internet)
     except Exception as e:
-        col4.metric("Pannes Internet", "❌")
+        col4.metric("Pannes Internet", "N/A")
 
     # 2. Liste des tickets avec lecture audio
-    st.subheader("📋 Derniers Tickets & Enregistrements")
+    st.subheader("Derniers Tickets & Enregistrements")
 
     # Récupération des données
     try:
@@ -255,20 +255,21 @@ try:
         )
 
         if len(df) == 0:
-            st.info("ℹ️ Aucun ticket trouvé. Faites un appel test pour voir les données ici.")
+            st.info("Aucun ticket trouvé. Faites un appel test pour voir les données ici.")
         else:
             # Affichage personnalisé pour chaque ticket
             for index, row in df.iterrows():
-                # Couleur de la bordure selon le sentiment
-                sentiment_emoji = "😐"
+                # Badge sentiment
                 if row['sentiment'] == 'positive':
-                    sentiment_emoji = "🙂"
+                    sentiment_badge = "[+]"
                 elif row['sentiment'] == 'negative':
-                    sentiment_emoji = "😡"
+                    sentiment_badge = "[-]"
+                else:
+                    sentiment_badge = "[=]"
 
                 # Titre de l'expander
                 expander_title = (
-                    f"{sentiment_emoji} {row['created_at'].strftime('%H:%M')} - "
+                    f"{sentiment_badge} {row['created_at'].strftime('%H:%M')} - "
                     f"{row['phone_number']} - {row['problem_type'].upper()} "
                     f"({row['status']})"
                 )
@@ -295,23 +296,23 @@ try:
                                 wav_data = convert_raw_to_wav(raw_data)
 
                                 st.audio(wav_data, format="audio/wav")
-                                st.caption("🎧 Enregistrement (WAV)")
+                                st.caption("Enregistrement (WAV)")
 
                             except Exception as e:
-                                st.error(f"❌ Erreur lecture: {e}")
+                                st.error(f"Erreur lecture: {e}")
                         else:
-                            st.warning("⚠️ Audio non trouvé")
+                            st.warning("Audio non trouvé")
                             st.caption(f"Cherché dans: {LOGS_DIR}")
 
     except Exception as e:
-        st.error(f"❌ Erreur lors de la récupération des tickets: {e}")
+        st.error(f"Erreur lors de la récupération des tickets: {e}")
         st.code(str(e))
 
 except Exception as e:
-    st.error(f"❌ Erreur globale: {e}")
+    st.error(f"Erreur globale: {e}")
     st.code(str(e))
 
-    with st.expander("🔍 Détails de l'erreur"):
+    with st.expander("Détails de l'erreur"):
         import traceback
         st.code(traceback.format_exc())
 
