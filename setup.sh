@@ -420,7 +420,22 @@ setup_python_environment() {
 ################################################################################
 
 generate_audio_cache() {
-    log_info "Génération du cache audio..."
+    # Vérifier si le cache existe déjà
+    if [[ -d "assets/cache" ]] && [[ $(ls -A assets/cache 2>/dev/null | wc -l) -gt 0 ]]; then
+        log_info "Cache audio existant détecté ($(ls -1 assets/cache/*.raw 2>/dev/null | wc -l) fichiers)"
+        echo ""
+        read -p "$(echo -e ${YELLOW}Voulez-vous régénérer le cache audio ? [y/N]:${NC} )" -n 1 -r
+        echo ""
+
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Conservation du cache audio existant"
+            return 0
+        fi
+
+        log_info "Régénération du cache audio..."
+    else
+        log_info "Génération du cache audio (première fois)..."
+    fi
 
     # Vérifier que l'environnement virtuel est activé
     if [[ -z "$VIRTUAL_ENV" ]]; then
