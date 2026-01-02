@@ -1,15 +1,15 @@
-# 📊 Configuration du Dashboard Streamlit
+#  Configuration du Dashboard Streamlit
 
-## 🎯 Objectif
+## Objectif
 
 Le dashboard permet de superviser en temps réel les appels du voicebot avec :
-- 📊 KPIs (appels du jour, durée moyenne, sentiment client)
-- 📋 Liste des 50 derniers tickets
+-  KPIs (appels du jour, durée moyenne, sentiment client)
+-  Liste des 50 derniers tickets
 - 🎧 Lecture des enregistrements audio
 
 ---
 
-## ✅ Configuration Requise
+## Configuration Requise
 
 ### 1. Variables d'Environnement (.env)
 
@@ -79,7 +79,7 @@ chmod 755 logs/calls
 
 ---
 
-## 🚀 Démarrage du Dashboard
+## Démarrage du Dashboard
 
 ### Option 1 : Avec Docker Compose (Recommandé)
 
@@ -103,7 +103,7 @@ streamlit run dashboard.py --server.port 8501 --server.address 0.0.0.0
 
 ---
 
-## 🌐 Accès au Dashboard
+## Accès au Dashboard
 
 Une fois démarré, accédez au dashboard via :
 
@@ -118,9 +118,9 @@ http://145.239.223.188:8501
 
 ---
 
-## 🔧 Résolution de Problèmes
+## Résolution de Problèmes
 
-### ❌ Erreur : "DB_TICKETS_DSN non configuré"
+### Erreur : "DB_TICKETS_DSN non configuré"
 
 **Cause** : La variable `DB_TICKETS_DSN` n'est pas dans le .env
 
@@ -138,7 +138,7 @@ docker restart voicebot-dashboard
 
 ---
 
-### ❌ Erreur : "Impossible de se connecter à la base de données"
+### Erreur : "Impossible de se connecter à la base de données"
 
 **Causes possibles** :
 1. PostgreSQL n'est pas démarré
@@ -167,7 +167,7 @@ docker exec -it postgres-tickets psql -U voicebot -d db_tickets
 
 ---
 
-### ❌ Erreur : "Accès Refusé" (IP bloquée)
+### Erreur : "Accès Refusé" (IP bloquée)
 
 **Cause** : Votre IP n'est pas dans `PERSONAL_IP`
 
@@ -204,7 +204,7 @@ docker restart voicebot-dashboard
 
 ---
 
-### ⚠️ Audio Non Trouvé
+### Audio Non Trouvé
 
 **Cause** : Les enregistrements audio ne sont pas dans `logs/calls/`
 
@@ -234,7 +234,7 @@ call_abc123-def456-789_1735689012.raw
 
 ---
 
-## 📊 Utilisation du Dashboard
+## Utilisation du Dashboard
 
 ### KPIs Affichés
 
@@ -249,15 +249,15 @@ call_abc123-def456-789_1735689012.raw
 
 Chaque ticket affiche :
 - 🕐 Heure de l'appel
-- 📞 Numéro de téléphone
+-  Numéro de téléphone
 - 🏷️ Type de problème (INTERNET, MOBILE, etc.)
 - 😐😡🙂 Sentiment client
-- 📝 Résumé du problème
+-  Résumé du problème
 - 🎧 Enregistrement audio (si disponible)
 
 ---
 
-## 🔐 Sécurité
+## Sécurité
 
 ### Validation IP
 
@@ -287,7 +287,7 @@ ufw status | grep 8501
 
 ---
 
-## 🎛️ Commandes Utiles
+## Commandes Utiles
 
 ```bash
 # Voir les logs du dashboard
@@ -311,16 +311,16 @@ docker ps | grep dashboard
 ## 🆚 Dashboard vs Grafana
 
 **Dashboard Streamlit (Port 8501)** :
-- ✅ Simple et rapide à utiliser
-- ✅ Lecture des enregistrements audio
-- ✅ Détails des tickets
-- ❌ Pas de graphiques avancés
+-  Simple et rapide à utiliser
+-  Lecture des enregistrements audio
+-  Détails des tickets
+-  Pas de graphiques avancés
 
 **Grafana (Port 3000)** :
-- ✅ Graphiques avancés et alertes
-- ✅ Métriques Prometheus en temps réel
-- ✅ Dashboards personnalisables
-- ❌ Pas de lecture audio
+-  Graphiques avancés et alertes
+-  Métriques Prometheus en temps réel
+-  Dashboards personnalisables
+-  Pas de lecture audio
 
 **Recommandation** : Utilisez les deux !
 - **Streamlit** pour l'analyse détaillée des appels
@@ -328,7 +328,7 @@ docker ps | grep dashboard
 
 ---
 
-## 📝 Exemple de Configuration Complète
+## Exemple de Configuration Complète
 
 ```bash
 # .env (exemple complet)
@@ -353,7 +353,7 @@ AMI_PASSWORD=secret123
 
 ---
 
-## ✅ Checklist de Démarrage
+## Checklist de Démarrage
 
 Avant d'utiliser le dashboard, vérifiez :
 
@@ -367,7 +367,7 @@ Avant d'utiliser le dashboard, vérifiez :
 
 ---
 
-## 🎉 Test de Fonctionnement
+## Test de Fonctionnement
 
 Pour tester que tout fonctionne :
 
@@ -382,15 +382,15 @@ Pour tester que tout fonctionne :
    ```
 
 3. **Vérifier l'affichage** :
-   - ✅ Titre "Supervision SAV Wipple"
-   - ✅ Message "Connecté à la base de données (X tickets)"
-   - ✅ 4 KPIs affichés
-   - ✅ Liste des tickets (ou message "Aucun ticket trouvé")
+   -  Titre "Supervision SAV Wipple"
+   -  Message "Connecté à la base de données (X tickets)"
+   -  4 KPIs affichés
+   -  Liste des tickets (ou message "Aucun ticket trouvé")
 
 4. **Faire un appel test** pour vérifier qu'un nouveau ticket apparaît
 
 ---
 
-**Status** : ✅ Dashboard corrigé et documenté
+**Status** :  Dashboard corrigé et documenté
 **Date** : 2025-12-31
 **Version** : 2.1

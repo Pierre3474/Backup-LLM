@@ -111,7 +111,7 @@ async def main():
     """
     # Vérifier les clés API
     if not config.ELEVENLABS_API_KEY:
-        logger.error("❌ ELEVENLABS_API_KEY non définie dans .env")
+        logger.error(" ELEVENLABS_API_KEY non définie dans .env")
         sys.exit(1)
 
     # Créer le répertoire cache
@@ -139,7 +139,7 @@ async def main():
     # Résumé
     logger.info("")
     logger.info("=" * 60)
-    logger.info("📊 Résumé de la génération")
+    logger.info(" Résumé de la génération")
     logger.info("=" * 60)
 
     success_count = sum(1 for _, success in results if success)
@@ -153,10 +153,10 @@ async def main():
     logger.info(f"Succès: {success_count}/{total_count}")
 
     if success_count == total_count:
-        logger.info("✅ Génération du cache terminée avec succès !")
+        logger.info(" Génération du cache terminée avec succès !")
         return 0
     else:
-        logger.error("❌ Certaines phrases n'ont pas pu être générées")
+        logger.error(" Certaines phrases n'ont pas pu être générées")
         return 1
 
 

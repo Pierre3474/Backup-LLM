@@ -256,7 +256,7 @@ def construct_system_prompt(client_info: Dict = None, client_history: list = Non
         "PROCÉDURE DE DIAGNOSTIC :\n"
         "1. Demande quel type de problème : 'Internet' ou 'Mobile' ?\n"
         "2. Pour INTERNET :\n"
-        "   a) ⚠️ IMPÉRATIF SÉCURITÉ : AVANT toute manipulation de box, tu DOIS dire :\n"
+        "   a)  IMPÉRATIF SÉCURITÉ : AVANT toute manipulation de box, tu DOIS dire :\n"
         "      'Attention, si vous appelez d'une ligne fixe, redémarrer la box coupera l'appel. "
         "Êtes-vous sur mobile ?'\n"
         "   b) Si OUI mobile : Guide le client pour redémarrer la box (débrancher 10 sec)\n"
@@ -286,7 +286,7 @@ def construct_system_prompt(client_info: Dict = None, client_history: list = Non
         prompt += f"- {recent_calls_count} appel(s) récent(s) dans l'historique\n"
 
         if unresolved_count > 0:
-            prompt += f"- {unresolved_count} problème(s) NON RÉSOLU(S) ⚠️\n"
+            prompt += f"- {unresolved_count} problème(s) NON RÉSOLU(S) \n"
             # Mentionner le dernier problème non résolu
             last_unresolved = next((t for t in client_history if t['status'] != 'resolved'), None)
             if last_unresolved:
@@ -793,7 +793,7 @@ class CallHandler:
                             # pour réagir rapidement à l'interruption
                             if result.is_final:
                                 # LOG DÉBOGAGE: Interruption du client (barge-in)
-                                logger.info(f"[{self.call_id}] 👤 CLIENT (INTERRUPTION): {sentence}")
+                                logger.info(f"[{self.call_id}]  CLIENT (INTERRUPTION): {sentence}")
                                 self.last_user_speech_time = time.time()
 
                                 # ANALYSE DE SENTIMENT TEMPS RÉEL
@@ -825,7 +825,7 @@ class CallHandler:
                         # Traitement normal si le bot ne parlait pas
                         elif result.is_final:
                             # LOG DÉBOGAGE: Transcription finale du client
-                            logger.info(f"[{self.call_id}] 👤 CLIENT (STT): {sentence}")
+                            logger.info(f"[{self.call_id}]  CLIENT (STT): {sentence}")
                             self.last_user_speech_time = time.time()
 
                             # ANALYSE DE SENTIMENT TEMPS RÉEL
@@ -1229,7 +1229,7 @@ class CallHandler:
             start_time = time.time()
 
             # LOG DÉBOGAGE: Message du client
-            logger.info(f"[{self.call_id}] 👤 CLIENT: {user_message}")
+            logger.info(f"[{self.call_id}]  CLIENT: {user_message}")
 
             response = self.groq_client.chat.completions.create(
                 model=config.GROQ_MODEL,
@@ -1245,7 +1245,7 @@ class CallHandler:
             ai_response = response.choices[0].message.content.strip()
 
             # LOG DÉBOGAGE: Réponse de l'IA
-            logger.info(f"[{self.call_id}] 🤖 IA: {ai_response}")
+            logger.info(f"[{self.call_id}]  IA: {ai_response}")
 
             latency = time.time() - start_time
             logger.debug(f"[{self.call_id}] LLM latency: {latency:.3f}s")
@@ -1255,7 +1255,7 @@ class CallHandler:
         except Exception as e:
             logger.error(f"[{self.call_id}] Groq API error: {e}")
             fallback_response = "Je suis désolé, pouvez-vous répéter ?"
-            logger.info(f"[{self.call_id}] 🤖 IA (fallback): {fallback_response}")
+            logger.info(f"[{self.call_id}]  IA (fallback): {fallback_response}")
             return fallback_response
 
     async def _analyze_sentiment_llm(self, conversation_summary: str) -> str:
@@ -1460,7 +1460,7 @@ class CallHandler:
         """Version Optimisée : Streaming Temps Réel + Modèle Turbo"""
         try:
             # LOG DÉBOGAGE: Ce que l'IA va dire
-            logger.info(f"[{self.call_id}] 🔊 IA PARLE: {text}")
+            logger.info(f"[{self.call_id}]  IA PARLE: {text}")
 
             self.is_speaking = True
             start_time = time.time()
@@ -1829,10 +1829,10 @@ class AudioSocketServer:
 
         addr = server.sockets[0].getsockname()
         logger.info("=" * 60)
-        logger.info(f"🎙️  AudioSocket Server started on {addr[0]}:{addr[1]}")
-        logger.info(f"📦 Cache loaded: {len(self.audio_cache.cache)} phrases")
-        logger.info(f"⚙️  Process pool workers: {config.PROCESS_POOL_WORKERS}")
-        logger.info(f"📞 Max concurrent calls: {config.MAX_CONCURRENT_CALLS}")
+        logger.info(f"  AudioSocket Server started on {addr[0]}:{addr[1]}")
+        logger.info(f" Cache loaded: {len(self.audio_cache.cache)} phrases")
+        logger.info(f"  Process pool workers: {config.PROCESS_POOL_WORKERS}")
+        logger.info(f" Max concurrent calls: {config.MAX_CONCURRENT_CALLS}")
         logger.info("=" * 60)
 
         async with server:
@@ -1850,7 +1850,7 @@ async def main():
 
     # Vérifier les clés API
     if not all([config.DEEPGRAM_API_KEY, config.GROQ_API_KEY, config.ELEVENLABS_API_KEY]):
-        logger.error("❌ Missing API keys in .env file")
+        logger.error(" Missing API keys in .env file")
         sys.exit(1)
 
     # INITIALISER LES POOLS DE BASE DE DONNÉES
@@ -1859,8 +1859,8 @@ async def main():
         await db_utils.init_db_pools()
         logger.info("✓ Database pools ready")
     except Exception as e:
-        logger.error(f"❌ Failed to initialize database: {e}")
-        logger.warning("⚠️  Continuing without database (tickets won't be saved)")
+        logger.error(f" Failed to initialize database: {e}")
+        logger.warning("  Continuing without database (tickets won't be saved)")
 
     # INITIALISER LE SERVEUR DE MÉTRIQUES PROMETHEUS
     try:
@@ -1868,8 +1868,8 @@ async def main():
         metrics.init_metrics_server(port=9091)
         logger.info("✓ Metrics server ready")
     except Exception as e:
-        logger.error(f"❌ Failed to start metrics server: {e}")
-        logger.warning("⚠️  Continuing without metrics")
+        logger.error(f" Failed to start metrics server: {e}")
+        logger.warning("  Continuing without metrics")
 
     # Créer le serveur
     server = AudioSocketServer()

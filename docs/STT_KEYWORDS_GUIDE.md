@@ -1,15 +1,15 @@
 # Guide : Améliorer la reconnaissance vocale (STT) avec les Keywords
 
-## 📋 Vue d'ensemble
+## Vue d'ensemble
 
 Le système utilise **Deepgram** pour la reconnaissance vocale (STT - Speech-To-Text). Par défaut, Deepgram peut avoir des difficultés à reconnaître :
 - 🏷️ **Noms propres** (prénoms, noms de famille)
 - 🏢 **Noms d'entreprises**
-- 🔧 **Termes techniques spécifiques**
+-  **Termes techniques spécifiques**
 
 La fonctionnalité **Keywords** de Deepgram permet de "booster" la reconnaissance de mots spécifiques.
 
-## 🎯 Comment ça marche ?
+## Comment ça marche ?
 
 Le fichier `stt_keywords.yaml` contient une liste de mots avec un niveau de boost (0-4) :
 
@@ -34,9 +34,9 @@ technical_terms:
 | **3** | Noms propres (prénoms, noms, entreprises) | Pierre:3, Dupont:3, Orange:3 |
 | **2** | Termes techniques courants | fibre:2, ADSL:2, WiFi:2 |
 | **1** | Termes peu courants | - |
-| **4** | ⚠️ À éviter (trop agressif) | - |
+| **4** |  À éviter (trop agressif) | - |
 
-## 📝 Comment ajouter de nouveaux keywords ?
+## Comment ajouter de nouveaux keywords ?
 
 ### 1. Éditer le fichier `stt_keywords.yaml`
 
@@ -78,7 +78,7 @@ Les keywords sont chargés au démarrage de chaque appel :
 systemctl restart voicebot
 ```
 
-## ⚠️ Limites et bonnes pratiques
+## Limites et bonnes pratiques
 
 ### Limites de performance
 
@@ -88,13 +88,13 @@ systemctl restart voicebot
 
 ### Bonnes pratiques
 
-✅ **À FAIRE**
+ **À FAIRE**
 - Ajouter les noms de vos clients les plus fréquents
 - Utiliser niveau 3 pour les noms propres
 - Utiliser niveau 2 pour les termes techniques
 - Tester après chaque ajout important
 
-❌ **À ÉVITER**
+ **À ÉVITER**
 - Ajouter des mots trop courants (le, la, de, etc.)
 - Utiliser boost niveau 4 (trop agressif)
 - Dépasser 200 keywords
@@ -103,7 +103,7 @@ systemctl restart voicebot
 ### Exemples de ce qu'il NE faut PAS ajouter
 
 ```yaml
-# ❌ MAUVAIS EXEMPLES
+#  MAUVAIS EXEMPLES
 common_words:
   - bonjour:3     # Mot trop courant, déjà bien reconnu
   - merci:3       # Mot trop courant
@@ -111,7 +111,7 @@ common_words:
   - internet:3    # Mot trop courant dans un contexte SAV télécom
 ```
 
-## 🧪 Comment tester l'amélioration ?
+## Comment tester l'amélioration ?
 
 ### 1. Avant l'ajout
 
@@ -143,7 +143,7 @@ User: "Je m'appelle Pierre et je suis client chez Orange"
                      Correct                        Correct
 ```
 
-## 📊 Analyse des logs
+## Analyse des logs
 
 Pour vérifier que les keywords sont bien chargés :
 
@@ -156,7 +156,7 @@ Vous devriez voir :
 ✓ Loaded 150 STT keywords for improved recognition
 ```
 
-## 🔧 Dépannage
+## Dépannage
 
 ### Problème : Keywords non chargés
 
@@ -201,7 +201,7 @@ python3 -c "import yaml; yaml.safe_load(open('stt_keywords.yaml'))"
 - Pierre:3
 ```
 
-## 📈 Métriques de succès
+## Métriques de succès
 
 Indicateurs pour mesurer l'amélioration :
 
@@ -220,7 +220,7 @@ Indicateurs pour mesurer l'amélioration :
 - [Documentation Deepgram Keywords](https://developers.deepgram.com/docs/keywords)
 - [Guide Deepgram - Améliorer la précision](https://developers.deepgram.com/docs/accuracy-best-practices)
 
-## 📞 Support
+## Support
 
 Pour toute question sur la configuration des keywords :
 - Consulter les logs : `journalctl -u voicebot -f`

@@ -1,6 +1,6 @@
-# 🚀 Guide de Déploiement et Mise à Jour
+#  Guide de Déploiement et Mise à Jour
 
-## 📋 Table des Matières
+## Table des Matières
 
 1. [Déploiement Initial](#déploiement-initial)
 2. [Mise à Jour du Serveur](#mise-à-jour-du-serveur)
@@ -10,7 +10,7 @@
 
 ---
 
-## 🎯 Déploiement Initial
+## Déploiement Initial
 
 ### Prérequis
 - Serveur Debian 12/13
@@ -29,24 +29,24 @@ sudo ./setup.sh install
 ```
 
 Le script va vous demander :
-- ✅ Clés API (Deepgram, Groq, ElevenLabs)
-- ✅ Mots de passe PostgreSQL
-- ✅ IP du serveur IA
-- ✅ IP(s) des serveurs Asterisk
-- ✅ Identifiants AMI Asterisk
-- ✅ Votre IP personnelle (pour accès admin)
+-  Clés API (Deepgram, Groq, ElevenLabs)
+-  Mots de passe PostgreSQL
+-  IP du serveur IA
+-  IP(s) des serveurs Asterisk
+-  Identifiants AMI Asterisk
+-  Votre IP personnelle (pour accès admin)
 
 ---
 
-## 🔄 Mise à Jour du Serveur
+## Mise à Jour du Serveur
 
 ### Méthode Recommandée : Reset avec Conservation du .env
 
 Cette méthode est **PARFAITE** pour les mises à jour car elle :
-- ✅ Garde toutes vos clés API et mots de passe
-- ✅ Nettoie Docker complètement
-- ✅ Réinstalle une version propre
-- ✅ Évite les conflits de configuration
+-  Garde toutes vos clés API et mots de passe
+-  Nettoie Docker complètement
+-  Réinstalle une version propre
+-  Évite les conflits de configuration
 
 ### Procédure de Mise à Jour
 
@@ -70,7 +70,7 @@ sudo ./setup.sh reset
 Le script va :
 1. 🔹 **Sauvegarder** votre .env en mémoire
 2. 🔹 **Supprimer** tous les conteneurs Docker
-3. 🔹 **Supprimer** tous les volumes (⚠️ données DB perdues)
+3. 🔹 **Supprimer** tous les volumes ( données DB perdues)
 4. 🔹 **Supprimer** l'environnement virtuel Python
 5. 🔹 **Supprimer** le cache audio
 6. 🔹 **Restaurer** votre .env
@@ -116,15 +116,15 @@ Le `setup.sh` propose maintenant **3 modes** :
 ./setup.sh clean
 ```
 
-**⚠️ ATTENTION** : Supprime **TOUT** y compris le `.env`
+** ATTENTION** : Supprime **TOUT** y compris le `.env`
 
 **Supprime** :
-- ❌ Stack Docker (conteneurs + volumes)
-- ❌ Environnement virtuel Python
-- ❌ Fichier `.env` (clés API perdues)
-- ❌ Fichier `docker-compose.override.yml`
-- ❌ Cache audio
-- ❌ Logs
+-  Stack Docker (conteneurs + volumes)
+-  Environnement virtuel Python
+-  Fichier `.env` (clés API perdues)
+-  Fichier `docker-compose.override.yml`
+-  Cache audio
+-  Logs
 
 **Quand l'utiliser** :
 - 🔹 Vous voulez repartir de zéro
@@ -137,17 +137,17 @@ Le `setup.sh` propose maintenant **3 modes** :
 ./setup.sh reset
 ```
 
-**✅ RECOMMANDÉ** pour les mises à jour
+** RECOMMANDÉ** pour les mises à jour
 
 **Supprime** :
-- ❌ Stack Docker (conteneurs + volumes)
-- ❌ Environnement virtuel Python
-- ❌ Fichier `docker-compose.override.yml`
-- ❌ Cache audio
-- ❌ Logs
+-  Stack Docker (conteneurs + volumes)
+-  Environnement virtuel Python
+-  Fichier `docker-compose.override.yml`
+-  Cache audio
+-  Logs
 
 **Conserve** :
-- ✅ Fichier `.env` (clés API, mots de passe)
+-  Fichier `.env` (clés API, mots de passe)
 
 **Quand l'utiliser** :
 - 🔹 Mise à jour du code depuis GitHub
@@ -164,24 +164,24 @@ Le `setup.sh` propose maintenant **3 modes** :
 Les logs montrent maintenant clairement les échanges entre le **CLIENT** et l'**IA** :
 
 ```log
-[call_abc123] 👤 CLIENT (STT): Bonjour, j'ai un problème avec ma connexion internet
-[call_abc123] 👤 CLIENT: Bonjour, j'ai un problème avec ma connexion internet
-[call_abc123] 🤖 IA: Bonjour ! Je comprends que vous rencontrez un problème avec votre connexion internet. Pourriez-vous me donner votre nom complet s'il vous plaît ?
-[call_abc123] 🔊 IA PARLE: Bonjour ! Je comprends que vous rencontrez un problème...
-[call_abc123] 👤 CLIENT (STT): Je m'appelle Pierre Martin
-[call_abc123] 👤 CLIENT: Je m'appelle Pierre Martin
-[call_abc123] 🤖 IA: Merci Pierre. Et votre adresse email ?
+[call_abc123]  CLIENT (STT): Bonjour, j'ai un problème avec ma connexion internet
+[call_abc123]  CLIENT: Bonjour, j'ai un problème avec ma connexion internet
+[call_abc123]  IA: Bonjour ! Je comprends que vous rencontrez un problème avec votre connexion internet. Pourriez-vous me donner votre nom complet s'il vous plaît ?
+[call_abc123]  IA PARLE: Bonjour ! Je comprends que vous rencontrez un problème...
+[call_abc123]  CLIENT (STT): Je m'appelle Pierre Martin
+[call_abc123]  CLIENT: Je m'appelle Pierre Martin
+[call_abc123]  IA: Merci Pierre. Et votre adresse email ?
 ```
 
 ### Légende des Emojis
 
 | Emoji | Signification | Description |
 |-------|---------------|-------------|
-| 👤 **CLIENT (STT)** | Transcription Speech-to-Text | Ce que Deepgram a entendu |
-| 👤 **CLIENT** | Message traité | Message envoyé au LLM |
-| 👤 **CLIENT (INTERRUPTION)** | Barge-in détecté | Client a interrompu l'IA |
-| 🤖 **IA** | Réponse générée | Ce que le LLM a répondu |
-| 🔊 **IA PARLE** | Synthèse vocale | Texte envoyé à ElevenLabs |
+|  **CLIENT (STT)** | Transcription Speech-to-Text | Ce que Deepgram a entendu |
+|  **CLIENT** | Message traité | Message envoyé au LLM |
+|  **CLIENT (INTERRUPTION)** | Barge-in détecté | Client a interrompu l'IA |
+|  **IA** | Réponse générée | Ce que le LLM a répondu |
+|  **IA PARLE** | Synthèse vocale | Texte envoyé à ElevenLabs |
 
 ### Suivre les Logs en Temps Réel
 
@@ -193,17 +193,17 @@ docker logs -f voicebot
 tail -f logs/voicebot_YYYY-MM-DD.log
 
 # Méthode 3 : Filtrer uniquement les conversations
-docker logs -f voicebot | grep -E "👤|🤖|🔊"
+docker logs -f voicebot | grep -E "||"
 ```
 
 ### Exemples de Patterns à Chercher
 
 ```bash
 # Voir toutes les transcriptions clients
-docker logs voicebot | grep "👤 CLIENT (STT)"
+docker logs voicebot | grep " CLIENT (STT)"
 
 # Voir toutes les réponses IA
-docker logs voicebot | grep "🤖 IA:"
+docker logs voicebot | grep " IA:"
 
 # Voir les interruptions (barge-in)
 docker logs voicebot | grep "INTERRUPTION"
@@ -217,18 +217,18 @@ docker logs voicebot | grep "0612345678"
 
 ---
 
-## 📊 Monitoring en Production
+## Monitoring en Production
 
 ### Dashboard Streamlit
 
 Accès : `http://IP_SERVEUR:8501` (depuis votre IP autorisée)
 
 **Informations disponibles** :
-- 📞 Appels en cours
-- 📈 Statistiques du jour
+-  Appels en cours
+-  Statistiques du jour
 - 🎫 Derniers tickets créés
 - 😡 Détection de colère
-- ⏱️ Durées moyennes
+-  Durées moyennes
 
 ### Prometheus + Grafana
 
@@ -259,7 +259,7 @@ docker exec postgres-tickets psql -U voicebot -d db_tickets -c "SELECT COUNT(*) 
 
 ---
 
-## 🔧 Résolution de Problèmes Courants
+## Résolution de Problèmes Courants
 
 ### Problème : Le serveur ne démarre pas après une mise à jour
 
@@ -306,7 +306,7 @@ sudo ./setup.sh reset
 
 ---
 
-## 📝 Checklist de Mise à Jour
+## Checklist de Mise à Jour
 
 - [ ] Se connecter au serveur SSH
 - [ ] Arrêter le serveur actuel (Ctrl+C)
@@ -334,7 +334,7 @@ En cas de problème :
 
 ---
 
-## 🎉 Félicitations !
+## Félicitations !
 
 Votre serveur est maintenant à jour et prêt à traiter les appels.
 

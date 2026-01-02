@@ -1,4 +1,4 @@
-# 🤖 Voicebot SAV- Intelligence Artificielle Conversationnelle
+# Voicebot SAV- Intelligence Artificielle Conversationnelle
 
 Système de **voicebot IA** entièrement automatisé pour le support technique téléphonique. Gère jusqu'à **20 appels simultanés** avec reconnaissance vocale, compréhension naturelle du langage et synthèse vocale ultra-rapide.
 
@@ -9,7 +9,7 @@ Système de **voicebot IA** entièrement automatisé pour le support technique t
 
 ---
 
-## 📋 Table des Matières
+## Table des Matières
 
 1. [Structure du Projet](#-structure-du-projet)
 2. [Vue d'ensemble](#-vue-densemble)
@@ -28,13 +28,13 @@ Système de **voicebot IA** entièrement automatisé pour le support technique t
 
 ---
 
-## 📁 Structure du Projet
+## Structure du Projet
 
 ### Arborescence Complète
 
 ```
 Backup-LLM/
-├── 📄 Configuration
+├── Configuration
 │   ├── .env.example              # Template des variables d'environnement
 │   ├── .gitignore                # Fichiers à exclure du versioning
 │   ├── .dockerignore             # Fichiers à exclure de l'image Docker
@@ -46,14 +46,14 @@ Backup-LLM/
 │   ├── stt_keywords.yaml         # Mots-clés pour améliorer la STT
 │   └── system_prompt_base.yaml   # Prompt système de base
 │
-├── 🐍 Code Source Principal
+├── Code Source Principal
 │   ├── server.py                 # Serveur AudioSocket (cœur du voicebot)
 │   ├── audio_utils.py            # Conversion audio, cache TTS
 │   ├── db_utils.py               # Connexions PostgreSQL, requêtes
 │   ├── metrics.py                # Métriques Prometheus (latence, coûts)
 │   └── generate_cache.py         # Script de génération du cache audio
 │
-├── 🗄️ Base de Données
+├── Base de Données
 │   ├── init_clients.sql          # Initialisation table clients
 │   ├── init_tickets.sql          # Initialisation table tickets
 │   └── migrations/               # Migrations SQL progressives
@@ -62,7 +62,7 @@ Backup-LLM/
 │       ├── 004_remove_transcript_add_client_info.sql
 │       └── 005_add_companies_table.sql
 │
-├── 📊 Monitoring & Supervision
+├── Monitoring & Supervision
 │   └── monitoring/
 │       ├── dashboard.py          # Dashboard Streamlit (port 8501)
 │       ├── prometheus.yml        # Configuration Prometheus
@@ -73,21 +73,20 @@ Backup-LLM/
 │           └── dashboards/
 │               └── voicebot-roi.json  # Dashboard ROI complet
 │
-├── 🧪 Données de Test
+├── Données de Test
 │   ├── add_clement_dumas.sh      # Ajouter le client principal (Total)
 │   ├── add_clement_dumas.sql     # SQL pour Clément DUMAS
 │   ├── insert_test_clients.sql   # 36 clients + 11 entreprises de test
 │   ├── load_test_data.sh         # Charger toutes les données de test
 │   └── clean_test_data.sh        # Supprimer les données de test
 │
-├── 🔧 Scripts Utilitaires
+├── Scripts Utilitaires
 │   ├── setup.sh                  # Installation complète + génération cache
 │   └── scripts/
 │       ├── reset_database.sh     # Réinitialisation complète des DB
-│       ├── reset_database.sql    # SQL de réinitialisation
-│       └── quick_reset.sh        # Reset rapide (développement)
+│       └── reset_database.sql    # SQL de réinitialisation
 │
-└── 📚 Documentation
+└── Documentation
     ├── README.md                 # Documentation principale (ce fichier)
     ├── STRUCTURE.md              # Structure détaillée du projet
     └── docs/
@@ -194,17 +193,17 @@ Une fois lancé :
 
 ---
 
-## 🎯 Vue d'ensemble
+## Vue d'ensemble
 
 ### Qu'est-ce que le Voicebot ?
 
 Le **Voicebot SAV  ** est un **assistant vocal intelligent** qui répond automatiquement aux appels téléphoniques du support technique. Il :
 
-- ✅ **Comprend** le problème du client (reconnaissance vocale Deepgram)
-- ✅ **Détecte** automatiquement si c'est un problème Internet ou Téléphone
-- ✅ **Propose** des solutions (redémarrage box, vérifications)
-- ✅ **Transfère** vers un technicien si nécessaire
-- ✅ **Sauvegarde** automatiquement un ticket détaillé en base de données
+-  **Comprend** le problème du client (reconnaissance vocale Deepgram)
+-  **Détecte** automatiquement si c'est un problème Internet ou Téléphone
+-  **Propose** des solutions (redémarrage box, vérifications)
+-  **Transfère** vers un technicien si nécessaire
+-  **Sauvegarde** automatiquement un ticket détaillé en base de données
 
 ### Architecture Distribuée
 
@@ -229,9 +228,9 @@ Le **Voicebot SAV  ** est un **assistant vocal intelligent** qui répond automat
 
 ---
 
-## ✨ Fonctionnalités
+## Fonctionnalités
 
-### 🎙️ Traitement Vocal Temps Réel
+### Traitement Vocal Temps Réel
 
 - **Reconnaissance vocale** : Deepgram Nova-2 (précision 95%+)
 - **Synthèse vocale** : ElevenLabs Flash v2.5 (latence <300ms)
@@ -239,7 +238,7 @@ Le **Voicebot SAV  ** est un **assistant vocal intelligent** qui répond automat
 - **Barge-in** : Le client peut interrompre le bot à tout moment
 - **Détection de colère** : Transfert automatique si mots négatifs détectés
 
-### 🧠 Intelligence Artificielle
+### Intelligence Artificielle
 
 - **LLM** : Groq Llama 3.1-70B (réponses en <500ms)
 - **Compréhension contextuelle** : Machine à états conversationnelle
@@ -247,7 +246,7 @@ Le **Voicebot SAV  ** est un **assistant vocal intelligent** qui répond automat
 - **Analyse de sentiment** : Positive/Neutral/Negative
 - **Classification auto** : Tag (FIBRE_SYNCHRO, MOBILE_4G...) + Sévérité (LOW/MEDIUM/HIGH)
 
-### 💾 Gestion des Données
+### Gestion des Données
 
 - **2 bases PostgreSQL** séparées (clients + tickets)
 - **Tickets automatiques** avec :
@@ -259,7 +258,7 @@ Le **Voicebot SAV  ** est un **assistant vocal intelligent** qui répond automat
 - **Historique client** : Détecte si client récurrent
 - **Tickets en attente** : Propose de reprendre un ticket ouvert
 
-### ⚡ Optimisations Performances
+### Optimisations Performances
 
 - **Cache audio** : 27 phrases pré-enregistrées (réponses instantanées)
 - **Optimisation TTS** : 60-80% moins d'appels ElevenLabs
@@ -267,7 +266,7 @@ Le **Voicebot SAV  ** est un **assistant vocal intelligent** qui répond automat
 - **ProcessPoolExecutor** : Conversion audio parallèle
 - **Healthchecks** : Démarrage séquentiel optimisé
 
-### 🛡️ Sécurité
+### Sécurité
 
 - **Firewall iptables** : Port 9090 restreint aux IPs Asterisk
 - **Dashboard sécurisé** : Port 8501 accessible uniquement aux IPs admin
@@ -277,7 +276,7 @@ Le **Voicebot SAV  ** est un **assistant vocal intelligent** qui répond automat
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ### Services Docker
 
@@ -321,7 +320,7 @@ TRANSFER ou GOODBYE
 
 ---
 
-## 🚀 Installation
+## Installation
 
 ### Prérequis
 
@@ -345,14 +344,14 @@ sudo bash setup.sh
 ```
 
 Le script `setup.sh` va :
-1. ✅ Demander vos clés API (Deepgram, Groq, ElevenLabs)
-2. ✅ Configurer les IPs Asterisk autorisées
-3. ✅ Générer un mot de passe PostgreSQL sécurisé
-4. ✅ Créer le fichier `.env`
-5. ✅ Builder les images Docker
-6. ✅ Initialiser les bases de données
-7. ✅ Configurer le firewall iptables
-8. ✅ Générer le cache audio (27 phrases)
+1.  Demander vos clés API (Deepgram, Groq, ElevenLabs)
+2.  Configurer les IPs Asterisk autorisées
+3.  Générer un mot de passe PostgreSQL sécurisé
+4.  Créer le fichier `.env`
+5.  Builder les images Docker
+6.  Initialiser les bases de données
+7.  Configurer le firewall iptables
+8.  Générer le cache audio (27 phrases)
 
 ### Réinstallation Rapide
 
@@ -365,7 +364,7 @@ sudo bash setup.sh
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 ### Fichier `.env`
 
@@ -409,7 +408,7 @@ sudo bash manage_allowed_ips.sh
 
 ---
 
-## 🤖 Services IA
+## Services IA
 
 ### 1. Deepgram STT (Speech-to-Text)
 
@@ -468,7 +467,7 @@ audio_stream = client.generate(
 
 ---
 
-## 📞 Workflow d'un Appel
+## Workflow d'un Appel
 
 ### 1. Connexion (0-2 secondes)
 
@@ -575,7 +574,7 @@ await db_utils.create_ticket(ticket_data)
 
 ---
 
-## 💾 Base de Données
+## Base de Données
 
 ### Structure
 
@@ -634,7 +633,7 @@ docker compose exec -T postgres-tickets psql -U voicebot -d db_tickets < migrati
 
 ---
 
-## ⚡ Optimisations
+## Optimisations
 
 ### 1. Cache Audio (assets/cache/)
 
@@ -651,9 +650,9 @@ transfer.raw                 # "Je vous transfère..."
 ```
 
 **Impact** :
-- ✅ Latence : **0ms** (vs 300ms ElevenLabs)
-- ✅ Coûts : **0€** (pas d'API call)
-- ✅ Fiabilité : Toujours disponible
+-  Latence : **0ms** (vs 300ms ElevenLabs)
+-  Coûts : **0€** (pas d'API call)
+-  Fiabilité : Toujours disponible
 
 ### 2. Stratégie `_say_smart()`
 
@@ -715,16 +714,16 @@ if bytes[0] == 0x16 and bytes[1] == 0x03:
 
 ---
 
-## 📊 Dashboard
+## Dashboard
 
 Interface web Streamlit sur **port 8501** (sécurisé par IP).
 
 ### Fonctionnalités
 
-- 📈 **Statistiques du jour** : Appels total, durée moyenne, résolutions
-- 📋 **Liste des tickets** : Filtrable par date, statut, sentiment
-- 🔍 **Détails ticket** : Nom, email, durée, tag, summary complet
-- 📞 **Historique client** : Tous les appels d'un numéro
+-  **Statistiques du jour** : Appels total, durée moyenne, résolutions
+-  **Liste des tickets** : Filtrable par date, statut, sentiment
+-  **Détails ticket** : Nom, email, durée, tag, summary complet
+-  **Historique client** : Tous les appels d'un numéro
 - 🎵 **Lecture audio** : Fichiers .raw des appels enregistrés
 
 ### Lancement
@@ -738,22 +737,22 @@ docker compose logs dashboard
 
 ---
 
-## 📈 Monitoring ROI - Grafana & Prometheus
+## Monitoring ROI - Grafana & Prometheus
 
 **Système de métriques en temps réel** pour mesurer le **retour sur investissement (ROI)** du voicebot et suivre les **KPIs business** compréhensibles par les gestionnaires d'équipe.
 
 ### Accès aux Dashboards
 
-- 🎯 **Grafana** : http://51.77.200.59:3000
+-  **Grafana** : http://51.77.200.59:3000
   - **Username** : `admin`
   - **Password** : `voicebot2024`
-- 📊 **Prometheus** : http://51.77.200.59:9092
+-  **Prometheus** : http://51.77.200.59:9092
 
 ### Dashboard "Voicebot SAV - ROI & KPIs Business"
 
 Le dashboard principal affiche **10 métriques clés** pour mesurer la performance et la rentabilité :
 
-#### 💰 Métriques Financières
+#### Métriques Financières
 
 1. **Coût Moyen par Appel** : Calcule automatiquement le coût total (ElevenLabs + Deepgram + Groq) divisé par le nombre d'appels
    - ElevenLabs TTS : 0.11€/1000 caractères
@@ -765,7 +764,7 @@ Le dashboard principal affiche **10 métriques clés** pour mesurer la performan
 
 3. **Répartition des Coûts API** : Graphique temps réel montrant la proportion de chaque service IA
 
-#### ✅ Métriques de Performance
+#### Métriques de Performance
 
 4. **Taux de Résolution Automatique** : % d'appels résolus sans transfert vers technicien
    - 🟢 Vert : >70% (excellent)
@@ -780,7 +779,7 @@ Le dashboard principal affiche **10 métriques clés** pour mesurer la performan
    - 🟡 Jaune : 120-300s (normal)
    - 🔴 Rouge : >300s (lent)
 
-#### 📊 Métriques d'Activité
+#### Métriques d'Activité
 
 7. **Volume d'Appels** : Nombre d'appels traités par heure (graphique temps réel)
 
@@ -899,7 +898,7 @@ docker compose down && docker compose up -d
 
 ---
 
-## 🛡️ Sécurité
+## Sécurité
 
 ### Firewall iptables
 
@@ -922,17 +921,17 @@ sudo bash manage_allowed_ips.sh
 
 ### Variables sensibles
 
-❌ **Jamais commitées** :
+ **Jamais commitées** :
 - `.env` (clés API, mots de passe)
 - `/opt/PY_SAV/.allowed_*` (listes IPs)
 
-✅ **Versionnées** :
+ **Versionnées** :
 - `.env.example` (template sans secrets)
 - `setup.sh` (génère .env automatiquement)
 
 ---
 
-## 🔧 Maintenance
+## Maintenance
 
 ### Logs
 
@@ -992,7 +991,7 @@ docker compose exec postgres-clients pg_isready -U voicebot
 
 ---
 
-## 📚 Fichiers Importants
+## Fichiers Importants
 
 | Fichier | Description |
 |---------|-------------|
@@ -1053,7 +1052,7 @@ filtered_summary = summary  # Pas de filtre
 
 ---
 
-## 📞 Support
+## Support
 
 Pour toute question technique :
 - **Logs** : `docker compose logs -f voicebot`
@@ -1062,7 +1061,7 @@ Pour toute question technique :
 
 ---
 
-## 📝 License
+## License
 
 Proprietary -  Wipple © 2025
 

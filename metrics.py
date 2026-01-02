@@ -169,7 +169,7 @@ def init_metrics_server(port: int = 9091):
     """
     try:
         start_http_server(port)
-        logger.info(f"✅ Serveur de métriques Prometheus démarré sur le port {port}")
+        logger.info(f" Serveur de métriques Prometheus démarré sur le port {port}")
 
         # Définir les infos du build
         voicebot_info.info({
@@ -179,7 +179,7 @@ def init_metrics_server(port: int = 9091):
         })
 
     except Exception as e:
-        logger.error(f"❌ Erreur démarrage serveur métriques: {e}")
+        logger.error(f" Erreur démarrage serveur métriques: {e}")
         raise
 
 

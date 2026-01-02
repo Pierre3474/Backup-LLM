@@ -1,8 +1,8 @@
-# ✅ Status des Corrections - 2025-12-31
+#  Status des Corrections - 2025-12-31
 
-## 🎯 Problème Résolu : setup.sh ne lance plus server.py en dehors de Docker
+## Problème Résolu : setup.sh ne lance plus server.py en dehors de Docker
 
-### ❌ Ancien Comportement
+### Ancien Comportement
 
 ```bash
 # À la fin de setup.sh :
@@ -10,7 +10,7 @@ start_voicebot_server() {
     log_info "Activation de l'environnement virtuel..."
     source venv/bin/activate
     log_info "Démarrage du serveur voicebot sur le port 9090..."
-    python server.py  # ❌ Lance server.py sur l'hôte
+    python server.py  #  Lance server.py sur l'hôte
 }
 ```
 
@@ -23,24 +23,24 @@ Parce que Docker avait déjà lancé le serveur dans le conteneur `voicebot-app`
 
 ---
 
-### ✅ Nouveau Comportement
+### Nouveau Comportement
 
 ```bash
 start_voicebot_server() {
-    echo "✅ Serveur voicebot démarré dans Docker"
+    echo " Serveur voicebot démarré dans Docker"
     # Affiche les informations sur les conteneurs
     # Ne lance PLUS python server.py
 }
 ```
 
 **Résultat** :
-- ✅ Plus d'erreur "Address already in use"
-- ✅ Le serveur tourne uniquement dans Docker (comme prévu)
-- ✅ Affichage des commandes utiles pour gérer les conteneurs
+-  Plus d'erreur "Address already in use"
+-  Le serveur tourne uniquement dans Docker (comme prévu)
+-  Affichage des commandes utiles pour gérer les conteneurs
 
 ---
 
-## 📊 À Propos de l'Erreur ConnectionResetError (Port 9091)
+## À Propos de l'Erreur ConnectionResetError (Port 9091)
 
 ### Ce que vous voyez
 
@@ -66,7 +66,7 @@ ConnectionResetError: [Errno 104] Connection reset by peer
 
 ---
 
-### ✅ Comment Vérifier que les Métriques Fonctionnent
+### Comment Vérifier que les Métriques Fonctionnent
 
 Sur votre serveur, testez avec `curl` :
 
@@ -90,7 +90,7 @@ voicebot_calls_total{problem_type="mobile",status="completed"} 3.0
 
 ---
 
-### 🔍 Métriques Disponibles sur le Port 9091
+### Métriques Disponibles sur le Port 9091
 
 Le serveur Prometheus expose ces métriques :
 
@@ -107,11 +107,11 @@ Le serveur Prometheus expose ces métriques :
 
 ---
 
-## 🎯 Résumé des Corrections dans la Branche `claude/fix-all-issues-ssGib`
+## Résumé des Corrections dans la Branche `claude/fix-all-issues-ssGib`
 
 Voici tous les changements effectués sur cette branche :
 
-### 1. ✅ Correction de Bugs Critiques
+### 1.  Correction de Bugs Critiques
 
 - **Fix fonction `get_recent_tickets()`** (db_utils.py:288-345)
   - Fonction était vide, retournait toujours []
@@ -124,13 +124,13 @@ Voici tous les changements effectués sur cette branche :
 - **Fix imports dupliqués** (server.py)
   - Suppression des doublons
 
-### 2. ✅ Système de Débogage Amélioré
+### 2.  Système de Débogage Amélioré
 
 - **Logs avec emojis** (server.py)
   ```python
-  logger.info(f"[{call_id}] 👤 CLIENT: {user_text}")
-  logger.info(f"[{call_id}] 🤖 IA: {ai_response}")
-  logger.info(f"[{call_id}] 🔊 IA PARLE: {text}")
+  logger.info(f"[{call_id}]  CLIENT: {user_text}")
+  logger.info(f"[{call_id}]  IA: {ai_response}")
+  logger.info(f"[{call_id}]  IA PARLE: {text}")
   ```
 
 - **Meilleure traçabilité**
@@ -138,13 +138,13 @@ Voici tous les changements effectués sur cette branche :
   - Logs de cache TTS
   - Logs de transitions d'état
 
-### 3. ✅ Nouveau Mode Reset
+### 3.  Nouveau Mode Reset
 
 - **`./setup.sh reset`** : Garde le .env, nettoie tout le reste
 - **`./setup.sh clean`** : Supprime TOUT (y compris .env)
 - **Script automatique** : `quick_reset.sh` créé
 
-### 4. ✅ Nouveau Flux de Conversation
+### 4.  Nouveau Flux de Conversation
 
 **Ancien flux** :
 ```
@@ -177,24 +177,24 @@ BOT: [Questions de diagnostic...]
 ```
 
 **Avantages** :
-- ✅ Plus d'erreurs de transcription du nom
-- ✅ Confirmation des informations
-- ✅ Entreprise collectée
+-  Plus d'erreurs de transcription du nom
+-  Confirmation des informations
+-  Entreprise collectée
 
-### 5. ✅ Correction Grammaticale
+### 5.  Correction Grammaticale
 
 **Avant** :
 ```
-Je vois que vous avez déjà appelé 1 fois.  ❌
+Je vois que vous avez déjà appelé 1 fois.  
 ```
 
 **Après** :
 ```python
 fois_text = "une fois" if call_count == 1 else f"{call_count} fois"
-# Résultat : "vous avez déjà appelé une fois"  ✅
+# Résultat : "vous avez déjà appelé une fois"  
 ```
 
-### 6. ✅ Entreprises Clientes
+### 6.  Entreprises Clientes
 
 **Ajout dans `stt_keywords.yaml`** :
 ```yaml
@@ -212,7 +212,7 @@ client_companies:
 - Insertion des 5 entreprises
 - Lien avec table `clients` (colonne `company_id`)
 
-### 7. ✅ Setup.sh - Ne Régénère Plus le Cache Audio à Chaque Fois
+### 7.  Setup.sh - Ne Régénère Plus le Cache Audio à Chaque Fois
 
 **Avant** : Régénérait toujours les 31 fichiers audio (~2 minutes)
 
@@ -228,7 +228,7 @@ if [[ -d "assets/cache" ]] && [[ $(ls -A assets/cache 2>/dev/null | wc -l) -gt 0
 fi
 ```
 
-### 8. ✅ Setup.sh - Ne Lance Plus server.py en Dehors de Docker
+### 8.  Setup.sh - Ne Lance Plus server.py en Dehors de Docker
 
 **C'est la correction d'aujourd'hui** (commit a2c9e69)
 
@@ -238,7 +238,7 @@ fi
 
 ---
 
-## 📦 Commits sur la Branche
+## Commits sur la Branche
 
 ```bash
 git log --oneline -8
@@ -256,7 +256,7 @@ ee69a48 - feat: Amélioration du débogage et ajout option reset dans setup.sh
 
 ---
 
-## 🚀 Commandes Utiles
+## Commandes Utiles
 
 ### Vérifier les Conteneurs Docker
 
@@ -276,7 +276,7 @@ docker ps
 docker logs -f voicebot-app
 
 # Logs avec emojis seulement (débogage)
-docker logs -f voicebot-app | grep -E '👤|🤖|🔊'
+docker logs -f voicebot-app | grep -E '||'
 ```
 
 ### Vérifier les Métriques Prometheus
@@ -314,38 +314,38 @@ docker exec -it postgres-clients psql -U voicebot -d db_clients -c "SELECT * FRO
 
 ---
 
-## ✅ État Actuel
+## État Actuel
 
 | Composant | Status | Port | Notes |
 |-----------|--------|------|-------|
-| Voicebot Server | ✅ Running | 9090 | Dans Docker |
-| PostgreSQL Clients | ✅ Running | 5433 | Base clients |
-| PostgreSQL Tickets | ✅ Running | 5434 | Base tickets |
-| Prometheus Metrics | ✅ Running | 9091 | ConnectionResetError normal |
+| Voicebot Server |  Running | 9090 | Dans Docker |
+| PostgreSQL Clients |  Running | 5433 | Base clients |
+| PostgreSQL Tickets |  Running | 5434 | Base tickets |
+| Prometheus Metrics |  Running | 9091 | ConnectionResetError normal |
 
 ---
 
-## 🎯 Prochaines Étapes Recommandées
+## Prochaines Étapes Recommandées
 
 ### 1. Tester le Nouveau Flux de Conversation
 
 Faites un appel test pour vérifier :
-- ✅ Demande d'épellation du nom
-- ✅ Demande de l'entreprise
-- ✅ Confirmation du nom et de l'entreprise
-- ✅ Correction grammaticale "une fois"
+-  Demande d'épellation du nom
+-  Demande de l'entreprise
+-  Confirmation du nom et de l'entreprise
+-  Correction grammaticale "une fois"
 
 ### 2. Vérifier les Logs avec Emojis
 
 ```bash
-docker logs -f voicebot-app | grep -E '👤|🤖|🔊'
+docker logs -f voicebot-app | grep -E '||'
 ```
 
 Vous devriez voir :
 ```
-[call_abc] 👤 CLIENT: pierre
-[call_abc] 🤖 IA: Pourriez-vous épeler votre nom ?
-[call_abc] 🔊 IA PARLE: Pourriez-vous épeler votre nom de famille lettre par lettre ?
+[call_abc]  CLIENT: pierre
+[call_abc]  IA: Pourriez-vous épeler votre nom ?
+[call_abc]  IA PARLE: Pourriez-vous épeler votre nom de famille lettre par lettre ?
 ```
 
 ### 3. Vérifier la Table Companies
@@ -362,9 +362,9 @@ docker exec -it postgres-clients psql -U voicebot -d db_clients -f /app/migratio
 
 ---
 
-## 💡 Résolution de Problèmes
+## Résolution de Problèmes
 
-### ❌ "Address already in use" (port 9090)
+### "Address already in use" (port 9090)
 
 **Cause** : setup.sh essaie de lancer server.py en dehors de Docker
 
@@ -377,7 +377,7 @@ git pull origin claude/fix-all-issues-ssGib
 ./setup.sh
 ```
 
-### ❌ ConnectionResetError sur port 9091
+### ConnectionResetError sur port 9091
 
 **Ce n'est PAS une erreur** - Comportement réseau normal
 
@@ -386,7 +386,7 @@ git pull origin claude/fix-all-issues-ssGib
 curl http://localhost:9091/ | head -10
 ```
 
-### ❌ Table companies n'existe pas
+### Table companies n'existe pas
 
 **Solution** :
 ```bash
@@ -395,7 +395,7 @@ docker exec -it postgres-clients psql -U voicebot -d db_clients -f /app/migratio
 
 ---
 
-## 📞 Support
+## Support
 
 Toutes les corrections sont sur la branche : **`claude/fix-all-issues-ssGib`**
 
@@ -408,7 +408,7 @@ git pull origin claude/fix-all-issues-ssGib
 
 ---
 
-**Status** : ✅ Tous les problèmes résolus
+**Status** :  Tous les problèmes résolus
 **Date** : 2025-12-31
 **Version** : 2.0
 **Branch** : `claude/fix-all-issues-ssGib`

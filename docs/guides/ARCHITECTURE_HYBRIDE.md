@@ -1,4 +1,4 @@
-# 🚀 Architecture Hybride - Masquage de Latence
+#  Architecture Hybride - Masquage de Latence
 
 ## Vue d'ensemble
 
@@ -12,14 +12,14 @@ AVANT (Architecture séquentielle):
 │ Client dit  │ ──▶ │ Attente 2-3s...  │ ──▶ │ Bot répond  │
 │ son problème│     │ (génération LLM) │     │             │
 └─────────────┘     └──────────────────┘     └─────────────┘
-                    ⚠️ SILENCE GÊNANT
+                     SILENCE GÊNANT
 
 APRÈS (Architecture hybride):
 ┌─────────────┐     ┌──────────────┐     ┌─────────────────┐     ┌──────────────┐
 │ Client dit  │ ──▶ │ Filler CACHE │ ──▶ │ Génération LLM  │ ──▶ │ Réponse IA   │
 │ son problème│     │ "Hum..."     │     │ en arrière-plan │     │ personnalisée│
 └─────────────┘     └──────────────┘     └─────────────────┘     └──────────────┘
-                    ✅ 0ms latence      Masquée par filler
+                     0ms latence      Masquée par filler
 ```
 
 ## Fonctionnement technique
@@ -127,7 +127,7 @@ Client: "Ma box internet ne marche pas"
 [2s de silence...]
 Bot: "D'accord, essayez de redémarrer..."
 ```
-⚠️ Silence = impression de lenteur/bug
+ Silence = impression de lenteur/bug
 
 **APRÈS:**
 ```
@@ -136,7 +136,7 @@ Bot: "Hum, laissez-moi regarder..." (instantané)
 [Bot analyse pendant que phrase joue]
 Bot: "D'accord, essayez de redémarrer..."
 ```
-✅ Aucun silence = impression de rapidité
+ Aucun silence = impression de rapidité
 
 ## Génération cache audio
 
