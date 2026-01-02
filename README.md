@@ -186,10 +186,10 @@ Lors du `docker compose up`, **6 services** sont lancés :
 ### Accès aux Services
 
 Une fois lancé :
-- **Voicebot AudioSocket** : `145.239.223.188:9090` (Asterisk se connecte ici)
-- **Dashboard Streamlit** : http://145.239.223.188:8501
-- **Grafana ROI** : http://145.239.223.188:3000 (admin/voicebot2024)
-- **Prometheus** : http://145.239.223.188:9092
+- **Voicebot AudioSocket** : `YOUR_SERVER_IP:9090` (Asterisk se connecte ici)
+- **Dashboard Streamlit** : http://YOUR_SERVER_IP:8501
+- **Grafana ROI** : http://YOUR_SERVER_IP:3000 (voir .env pour les identifiants)
+- **Prometheus** : http://YOUR_SERVER_IP:9092
 
 ---
 
@@ -210,17 +210,17 @@ Le **Voicebot SAV  ** est un **assistant vocal intelligent** qui répond automat
 ```
 ┌─────────────────────┐
 │  Serveur Asterisk 1 │────┐
-│  145.239.223.189    │    │
+│  ASTERISK_SERVER_1_IP    │    │
 └─────────────────────┘    │
                            │     ┌──────────────────────────────┐
 ┌─────────────────────┐    │     │   Serveur IA (ce projet)     │
 │  Serveur Asterisk 2 │────┼────▶│   Port 9090 (AudioSocket)    │
-│  51.77.XXX.XXX      │    │     │                              │
+│  ASTERISK_SERVER_2_IP      │    │     │                              │
 └─────────────────────┘    │     │   - Deepgram STT             │
                            │     │   - Groq LLM (Llama)         │
 ┌─────────────────────┐    │     │   - ElevenLabs TTS           │
 │  Serveur Asterisk N │────┘     │   - PostgreSQL x2            │
-│  XX.XX.XXX.XXX      │          │   - Dashboard :8501          │
+│  ASTERISK_SERVER_N_IP      │          │   - Dashboard :8501          │
 └─────────────────────┘          └──────────────────────────────┘
 ```
 
@@ -384,12 +384,12 @@ DB_CLIENTS_DSN=postgresql://voicebot:xxxxx@postgres-clients:5432/db_clients
 DB_TICKETS_DSN=postgresql://voicebot:xxxxx@postgres-tickets:5432/db_tickets
 
 # Réseau
-SERVER_HOST_IP=51.77.200.59
+SERVER_HOST_IP=ASTERISK_SERVER_2_IP
 AUDIOSOCKET_PORT=9090
 
 # Asterisk AMI
-REMOTE_ASTERISK_IP=145.239.223.189
-AMI_HOST=145.239.223.189
+REMOTE_ASTERISK_IP=ASTERISK_SERVER_1_IP
+AMI_HOST=ASTERISK_SERVER_1_IP
 AMI_PORT=5038
 AMI_USERNAME=admin
 AMI_SECRET=xxxxx
@@ -732,7 +732,7 @@ Interface web Streamlit sur **port 8501** (sécurisé par IP).
 # Déjà lancé automatiquement par Docker Compose
 docker compose logs dashboard
 
-# Accès : http://51.77.200.59:8501
+# Accès : http://ASTERISK_SERVER_2_IP:8501
 ```
 
 ---
@@ -743,10 +743,10 @@ docker compose logs dashboard
 
 ### Accès aux Dashboards
 
--  **Grafana** : http://51.77.200.59:3000
+-  **Grafana** : http://ASTERISK_SERVER_2_IP:3000
   - **Username** : `admin`
   - **Password** : `voicebot2024`
--  **Prometheus** : http://51.77.200.59:9092
+-  **Prometheus** : http://ASTERISK_SERVER_2_IP:9092
 
 ### Dashboard "Voicebot SAV - ROI & KPIs Business"
 
@@ -904,7 +904,7 @@ docker compose down && docker compose up -d
 
 ```bash
 # Port 9090 (AudioSocket) - SEULEMENT IPs Asterisk
-iptables -I DOCKER-USER -p tcp --dport 9090 -s 145.239.223.189 -j ACCEPT
+iptables -I DOCKER-USER -p tcp --dport 9090 -s ASTERISK_SERVER_1_IP -j ACCEPT
 iptables -I DOCKER-USER -p tcp --dport 9090 -j DROP
 
 # Port 8501 (Dashboard) - SEULEMENT IPs Admin

@@ -13,7 +13,7 @@
 ## Accès à Grafana
 
 ```
-http://145.239.223.188:3000
+http://YOUR_SERVER_IP:3000
 ```
 
 **Identifiants par défaut** :
@@ -149,7 +149,7 @@ curl http://localhost:3000/api/health
 
 ### 1. Accéder au Dashboard Pré-configuré
 
-1. Ouvrir http://145.239.223.188:3000
+1. Ouvrir http://YOUR_SERVER_IP:3000
 2. Se connecter avec `admin` / `admin`
 3. Changer le mot de passe
 4. Aller dans **Dashboards** → **Voicebot ROI**
@@ -387,10 +387,10 @@ docker compose up -d grafana
 | Service | Port | URL | Description |
 |---------|------|-----|-------------|
 | **Voicebot** | 9090 | - | Serveur principal |
-| **Métriques** | 9091 | http://145.239.223.188:9091 | Endpoint Prometheus |
-| **Prometheus** | 9092 | http://145.239.223.188:9092 | Interface Prometheus |
-| **Grafana** | 3000 | http://145.239.223.188:3000 | Dashboards |
-| **Dashboard** | 8501 | http://145.239.223.188:8501 | Streamlit |
+| **Métriques** | 9091 | http://YOUR_SERVER_IP:9091 | Endpoint Prometheus |
+| **Prometheus** | 9092 | http://YOUR_SERVER_IP:9092 | Interface Prometheus |
+| **Grafana** | 3000 | http://YOUR_SERVER_IP:3000 | Dashboards |
+| **Dashboard** | 8501 | http://YOUR_SERVER_IP:8501 | Streamlit |
 
 ---
 
@@ -402,7 +402,7 @@ Avant d'utiliser Grafana :
 - [ ] Prometheus tourne (`docker ps | grep prometheus`)
 - [ ] Grafana tourne (`docker ps | grep grafana`)
 - [ ] Métriques accessibles (curl http://localhost:9091/)
-- [ ] Grafana accessible (http://145.239.223.188:3000)
+- [ ] Grafana accessible (http://YOUR_SERVER_IP:3000)
 - [ ] Mot de passe admin changé
 - [ ] Dashboard "Voicebot ROI" visible
 - [ ] Au moins 1 appel effectué pour avoir des données
@@ -461,8 +461,8 @@ docker ps | grep -E "voicebot|prometheus|grafana"
 docker logs -f voicebot-grafana
 
 # Accès rapide
-open http://145.239.223.188:3000  # macOS
-xdg-open http://145.239.223.188:3000  # Linux
+open http://YOUR_SERVER_IP:3000  # macOS
+xdg-open http://YOUR_SERVER_IP:3000  # Linux
 
 # Redémarrer tout le stack monitoring
 docker restart voicebot-app voicebot-prometheus voicebot-grafana

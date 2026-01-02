@@ -75,7 +75,7 @@ Sur votre serveur, testez avec `curl` :
 curl http://localhost:9091/
 
 # Ou depuis l'extérieur
-curl http://145.239.223.188:9091/
+curl http://YOUR_SERVER_IP:9091/
 ```
 
 **Si vous voyez des lignes comme ça, c'est OK** :

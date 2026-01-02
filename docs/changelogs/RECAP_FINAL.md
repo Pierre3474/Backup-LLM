@@ -118,10 +118,10 @@ OSError: [Errno 98] Address already in use (port 9090)
 ### Endpoints Accessibles
 
 ```
-http://145.239.223.188:8501   → Dashboard Streamlit (détails appels + audio)
-http://145.239.223.188:3000   → Grafana (métriques ROI + graphiques)
-http://145.239.223.188:9091   → Métriques Prometheus (raw data)
-http://145.239.223.188:9092   → Interface Prometheus
+http://YOUR_SERVER_IP:8501   → Dashboard Streamlit (détails appels + audio)
+http://YOUR_SERVER_IP:3000   → Grafana (métriques ROI + graphiques)
+http://YOUR_SERVER_IP:9091   → Métriques Prometheus (raw data)
+http://YOUR_SERVER_IP:9092   → Interface Prometheus
 ```
 
 ---
@@ -189,7 +189,7 @@ docker logs -f voicebot-app | grep -E '||'
 
 ### Dashboard Streamlit (Port 8501)
 
-**Accès** : http://145.239.223.188:8501
+**Accès** : http://YOUR_SERVER_IP:8501
 
 **Fonctionnalités** :
 -  4 KPIs (Appels du jour, Durée moyenne, Clients mécontents, Pannes Internet)
@@ -207,7 +207,7 @@ docker logs -f voicebot-app | grep -E '||'
 
 ### Grafana (Port 3000)
 
-**Accès** : http://145.239.223.188:3000
+**Accès** : http://YOUR_SERVER_IP:3000
 **Login** : `admin` / `admin` (à changer lors de la première connexion)
 
 **Fonctionnalités** :

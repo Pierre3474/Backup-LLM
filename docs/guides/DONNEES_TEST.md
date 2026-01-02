@@ -186,8 +186,8 @@ Format des logs :
 ## Base de Tickets de Test
 
 Les tickets créés pendant les tests apparaissent dans :
-- **Dashboard Streamlit** : http://145.239.223.188:8501
-- **Grafana** : http://145.239.223.188:3000
+- **Dashboard Streamlit** : http://YOUR_SERVER_IP:8501
+- **Grafana** : http://YOUR_SERVER_IP:3000
 - **Base de données** : `db_tickets`
 
 ## Notes

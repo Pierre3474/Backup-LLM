@@ -182,7 +182,7 @@ docker compose up -d
 
 ### Monitoring
 - **Dashboard Streamlit** : http://localhost:8501
-- **Grafana ROI** : http://localhost:3000 (admin/voicebot2024)
+- **Grafana ROI** : http://localhost:3000 (voir .env pour les identifiants)
 - **Prometheus** : http://localhost:9092
 
 ### Développement

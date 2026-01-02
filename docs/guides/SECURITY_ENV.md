@@ -181,7 +181,7 @@ docker volume rm backup-llm_grafana_data
 docker compose up -d grafana
 
 # 4. Se connecter avec le nouveau mot de passe
-# http://145.239.223.188:3000
+# http://YOUR_SERVER_IP:3000
 ```
 
 ---
@@ -242,7 +242,7 @@ docker compose config | grep -A 5 environment
 | `ELEVENLABS_API_KEY` | Clé API ElevenLabs | `sk_abc123...` |
 | `DEEPGRAM_API_KEY` | Clé API Deepgram | `xyz789...` |
 | `GROQ_API_KEY` | Clé API Groq | `gsk_def456...` |
-| `ASTERISK_HOST` | IP serveur Asterisk | `145.239.223.188` |
+| `ASTERISK_HOST` | IP serveur Asterisk | `YOUR_SERVER_IP` |
 | `AMI_USERNAME` | Username AMI | `admin` |
 | `AMI_PASSWORD` | Mot de passe AMI | `VotreMotDePasse!` |
 
@@ -253,7 +253,7 @@ docker compose config | grep -A 5 environment
 | Variable | Description | Défaut |
 |----------|-------------|--------|
 | `GRAFANA_ADMIN_USER` | Username Grafana | `admin` |
-| `GRAFANA_ADMIN_PASSWORD` | Mot de passe Grafana | `voicebot2024` |
+| `GRAFANA_ADMIN_PASSWORD` | Mot de passe Grafana | `VOTRE_MOT_DE_PASSE` |
 | `PERSONAL_IP` | IPs autorisées dashboard | `` (vide = tous) |
 | `LOG_LEVEL` | Niveau de log | `INFO` |
 | `DEBUG` | Mode debug | `false` |
