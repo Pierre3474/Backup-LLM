@@ -54,10 +54,11 @@ DB_TICKETS_DSN = os.getenv("DB_TICKETS_DSN", "postgresql://user:pass@localhost/d
 
 # === Asterisk AMI Settings ===
 # Configuration pour récupérer les variables de canal (CALLERID, etc.)
+# IMPORTANT: Définissez AMI_HOST et AMI_SECRET dans .env pour la production
 AMI_HOST = os.getenv("AMI_HOST", "localhost")
 AMI_PORT = int(os.getenv("AMI_PORT", 5038))
 AMI_USERNAME = os.getenv("AMI_USERNAME", "admin")
-AMI_SECRET = os.getenv("AMI_SECRET", "admin")
+AMI_SECRET = os.getenv("AMI_SECRET")  # DOIT être défini dans .env
 
 # === Horaires d'ouverture précis ===
 # Format : Jour (0=Lundi, 4=Vendredi) : [(Heure_Debut, Heure_Fin), (Heure_Debut, Heure_Fin)]
@@ -149,9 +150,8 @@ GROQ_TEMPERATURE = 0.7
 GROQ_MAX_TOKENS = 150
 
 # === ElevenLabs TTS Settings ===
-ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")  # Voice ID requis dans .env
-if not ELEVENLABS_VOICE_ID:
-    raise ValueError("ELEVENLABS_VOICE_ID must be set in .env file")
+# Voice ID : défini dans .env (fallback: Adrien - French voice)
+ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "N2lVS1w4EtoT3dr4eOWO")
 ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_turbo_v2_5")  # Modèle Turbo v2.5 (optimisé téléphonie, -50% coût, <300ms latence)
 ELEVENLABS_STABILITY = 0.5  # Stabilité de la voix (0.0 - 1.0)
 ELEVENLABS_SIMILARITY_BOOST = 0.75  # Clarté de la voix (0.0 - 1.0)
