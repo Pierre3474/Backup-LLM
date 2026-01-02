@@ -15,22 +15,22 @@ fi
 
 # Vérifier que le conteneur postgres-clients est en cours d'exécution
 if ! docker ps | grep -q voicebot-db-clients; then
-    echo "❌ Erreur: Le conteneur voicebot-db-clients n'est pas en cours d'exécution"
+    echo " Erreur: Le conteneur voicebot-db-clients n'est pas en cours d'exécution"
     exit 1
 fi
 
-echo "⚠️  ATTENTION: Cette action va supprimer tous les clients de test"
-echo "   (numéros commençant par 0699 et 0698)"
+echo "ATTENTION: Cette action va supprimer tous les clients de test"
+echo " (numéros commençant par 0699 et 0698)"
 echo ""
 read -p "Êtes-vous sûr ? [y/N] " -n 1 -r
 echo ""
 
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "❌ Annulé"
+    echo " Annulé"
     exit 1
 fi
 
-echo "🗑️  Suppression des clients de test..."
+echo "Suppression des clients de test..."
 
 # Supprimer les clients de test
 docker exec -i voicebot-db-clients psql -U voicebot -d db_clients <<-EOF
@@ -49,5 +49,5 @@ docker exec -i voicebot-db-clients psql -U voicebot -d db_clients <<-EOF
 EOF
 
 echo ""
-echo "✅ Données de test supprimées avec succès !"
+echo "Données de test supprimées avec succès !"
 echo ""

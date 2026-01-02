@@ -1,12 +1,12 @@
-# 🔄 Guide d'Utilisation du Reset
+#  Guide d'Utilisation du Reset
 
-## 📋 Le script `./setup.sh reset` fonctionne correctement !
+## Le script `./setup.sh reset` fonctionne correctement !
 
 Il demande simplement votre **confirmation** avant d'agir.
 
 ---
 
-## 🎯 Méthode 1 : Mode Interactif (Recommandé)
+## Méthode 1 : Mode Interactif (Recommandé)
 
 ### Étapes
 
@@ -63,7 +63,7 @@ Souhaitez-vous lancer l'installation maintenant? [Y/n]: Y  ← VOUS APPUYEZ SUR 
 
 ---
 
-## 🚀 Méthode 2 : Mode Automatique (Script Prêt à l'Emploi)
+## Méthode 2 : Mode Automatique (Script Prêt à l'Emploi)
 
 J'ai créé un script qui fait tout automatiquement :
 
@@ -73,9 +73,9 @@ J'ai créé un script qui fait tout automatiquement :
 ```
 
 Ce script :
-- ✅ Répond automatiquement 'y' pour confirmer le reset
-- ✅ Répond automatiquement 'Y' pour lancer l'installation
-- ✅ Pas besoin d'interaction manuelle
+-  Répond automatiquement 'y' pour confirmer le reset
+-  Répond automatiquement 'Y' pour lancer l'installation
+-  Pas besoin d'interaction manuelle
 
 **Parfait pour** :
 - Mises à jour rapides
@@ -84,7 +84,7 @@ Ce script :
 
 ---
 
-## ⚙️ Méthode 3 : Commandes Séparées (Contrôle Total)
+## Méthode 3 : Commandes Séparées (Contrôle Total)
 
 Si vous voulez plus de contrôle :
 
@@ -137,7 +137,7 @@ cd /chemin/vers/Backup-LLM
 
 ---
 
-## ✅ Vérification Post-Reset
+## Vérification Post-Reset
 
 Après le reset et la réinstallation, vérifiez que tout fonctionne :
 
@@ -165,7 +165,7 @@ cat .env | grep API_KEY
 
 ---
 
-## 📊 Comparaison des Modes
+## Comparaison des Modes
 
 | Méthode | Commande | Interaction | Usage |
 |---------|----------|-------------|-------|
@@ -175,7 +175,7 @@ cat .env | grep API_KEY
 
 ---
 
-## 🎯 Exemples d'Utilisation Réelle
+## Exemples d'Utilisation Réelle
 
 ### Scénario 1 : Mise à Jour Hebdomadaire
 
@@ -207,7 +207,7 @@ echo -e "y\nn" | ./setup.sh reset
 
 ---
 
-## 🎉 Résumé
+## Résumé
 
 Le script `./setup.sh reset` **fonctionne parfaitement** !
 
@@ -226,7 +226,7 @@ Il demande juste votre confirmation pour éviter les suppressions accidentelles.
 
 ---
 
-## 📞 Besoin d'Aide ?
+## Besoin d'Aide ?
 
 Si le problème persiste :
 

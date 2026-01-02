@@ -1,6 +1,6 @@
-# 🔐 Application de la Mise à Jour de Sécurité
+#  Application de la Mise à Jour de Sécurité
 
-## ✅ Ce qui a été fait
+## Ce qui a été fait
 
 Toutes les informations sensibles ont été déplacées du fichier `docker-compose.yml` vers le fichier `.env` pour une meilleure sécurité.
 
@@ -11,7 +11,7 @@ Toutes les informations sensibles ont été déplacées du fichier `docker-compo
 
 ---
 
-## 🚀 Comment Appliquer sur Votre Serveur
+## Comment Appliquer sur Votre Serveur
 
 ### Étape 1 : Récupérer les Modifications
 
@@ -34,9 +34,9 @@ git pull origin claude/fix-all-issues-ssGib
 ```
 
 Le script va :
-- ✅ Créer un backup de votre `.env` actuel
-- ✅ Ajouter les variables manquantes (`GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`)
-- ✅ Afficher les variables à vérifier
+-  Créer un backup de votre `.env` actuel
+-  Ajouter les variables manquantes (`GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`)
+-  Afficher les variables à vérifier
 
 ---
 
@@ -114,12 +114,12 @@ docker ps
 
 **Résultat attendu** :
 ```
-voicebot-app          ✅ Up
-voicebot-db-clients   ✅ Up
-voicebot-db-tickets   ✅ Up
-voicebot-dashboard    ✅ Up
-voicebot-grafana      ✅ Up
-voicebot-prometheus   ✅ Up
+voicebot-app           Up
+voicebot-db-clients    Up
+voicebot-db-tickets    Up
+voicebot-dashboard     Up
+voicebot-grafana       Up
+voicebot-prometheus    Up
 ```
 
 ---
@@ -145,11 +145,11 @@ curl http://localhost:9091/ | head -20
 
 ---
 
-## 🔒 Sécurité - Actions Recommandées
+## Sécurité - Actions Recommandées
 
 ### 1. Changez les Mots de Passe par Défaut
 
-⚠️ **IMPORTANT** : Ne gardez PAS les mots de passe par défaut en production !
+ **IMPORTANT** : Ne gardez PAS les mots de passe par défaut en production !
 
 ```bash
 # Générer un mot de passe fort
@@ -192,7 +192,7 @@ Le fichier `.env` **ne doit JAMAIS** être commité dans Git.
 
 ---
 
-## ⚠️ Si Quelque Chose Ne Fonctionne Pas
+## Si Quelque Chose Ne Fonctionne Pas
 
 ### Problème 1 : Grafana "Invalid username or password"
 
@@ -251,7 +251,7 @@ docker restart voicebot-dashboard
 
 ---
 
-## 📋 Checklist Complète
+## Checklist Complète
 
 Après la mise à jour, vérifiez :
 
@@ -268,7 +268,7 @@ Après la mise à jour, vérifiez :
 
 ---
 
-## 📊 Nouveaux Fichiers Créés
+## Nouveaux Fichiers Créés
 
 | Fichier | Description |
 |---------|-------------|
@@ -306,7 +306,7 @@ Si vous rencontrez un problème :
 
 ---
 
-## ✅ Résumé
+## Résumé
 
 1. `git pull origin claude/fix-all-issues-ssGib`
 2. `./migrate_env.sh`
@@ -316,7 +316,7 @@ Si vous rencontrez un problème :
 6. Changer les mots de passe par défaut
 7. `chmod 600 .env`
 
-**🔒 Vos secrets sont maintenant sécurisés !**
+** Vos secrets sont maintenant sécurisés !**
 
 ---
 

@@ -1,14 +1,14 @@
-# 🎉 Récapitulatif Final - Toutes les Corrections
+#  Récapitulatif Final - Toutes les Corrections
 
-## ✅ Résumé
+## Résumé
 
 **Toutes les corrections ont été appliquées et poussées sur la branche `claude/fix-all-issues-ssGib`**
 
 ---
 
-## 📦 Ce qui a été corrigé aujourd'hui (2025-12-31)
+## Ce qui a été corrigé aujourd'hui (2025-12-31)
 
-### 1. ✅ Setup.sh - Ne lance plus server.py en dehors de Docker
+### 1.  Setup.sh - Ne lance plus server.py en dehors de Docker
 
 **Problème** :
 ```bash
@@ -24,7 +24,7 @@ OSError: [Errno 98] Address already in use (port 9090)
 
 ---
 
-### 2. ✅ Dashboard.py - Correction Complète
+### 2.  Dashboard.py - Correction Complète
 
 **Problèmes** :
 - Affichait l'IP du client (message indésirable)
@@ -32,11 +32,11 @@ OSError: [Errno 98] Address already in use (port 9090)
 - Warnings pandas sur psycopg2
 
 **Solutions** :
-- ✅ Suppression de tous les messages affichant l'IP
-- ✅ Validation IP maintenant silencieuse
-- ✅ Migration psycopg2 → SQLAlchemy (supprime warnings pandas)
-- ✅ Utilisation de `st.context.headers` (nouveau système Streamlit)
-- ✅ Plus aucun warning dans les logs
+-  Suppression de tous les messages affichant l'IP
+-  Validation IP maintenant silencieuse
+-  Migration psycopg2 → SQLAlchemy (supprime warnings pandas)
+-  Utilisation de `st.context.headers` (nouveau système Streamlit)
+-  Plus aucun warning dans les logs
 
 **Commits** :
 - `9733f59 - fix: Correction complète du dashboard.py`
@@ -44,9 +44,9 @@ OSError: [Errno 98] Address already in use (port 9090)
 
 ---
 
-### 3. ✅ Enregistrement Audio - Vérification
+### 3.  Enregistrement Audio - Vérification
 
-**Status** : ✅ Déjà fonctionnel
+**Status** :  Déjà fonctionnel
 
 - Tous les appels sont automatiquement enregistrés dans `logs/calls/`
 - Format : `call_{uuid}_{timestamp}.raw`
@@ -55,7 +55,7 @@ OSError: [Errno 98] Address already in use (port 9090)
 
 ---
 
-### 4. ✅ Documentation Complète
+### 4.  Documentation Complète
 
 **Nouveaux guides créés** :
 
@@ -68,52 +68,52 @@ OSError: [Errno 98] Address already in use (port 9090)
 
 ---
 
-## 🔧 Tous les Problèmes Résolus (Historique Complet)
+## Tous les Problèmes Résolus (Historique Complet)
 
 ### Session 1 - Corrections Initiales
 
-1. ✅ **get_recent_tickets() vide** (db_utils.py) → Code orphelin réintégré
-2. ✅ **3 bare exceptions** (server.py) → Remplacé par `except Exception as e:`
-3. ✅ **Imports dupliqués** → Supprimés
-4. ✅ **init_db.sql est un répertoire** → docker-compose.yml corrigé
+1.  **get_recent_tickets() vide** (db_utils.py) → Code orphelin réintégré
+2.  **3 bare exceptions** (server.py) → Remplacé par `except Exception as e:`
+3.  **Imports dupliqués** → Supprimés
+4.  **init_db.sql est un répertoire** → docker-compose.yml corrigé
 
 ### Session 2 - Améliorations Flux Conversation
 
-5. ✅ **Nouveau flux identification** → Demande épellation du nom
-6. ✅ **Confirmation nom + entreprise** → Double vérification
-7. ✅ **Correction grammaticale** → "1 fois" → "une fois"
-8. ✅ **5 entreprises clientes ajoutées** → CARvertical, Vetodok, RCF Elec, L'ONAsoft, SNCF
-9. ✅ **Migration SQL** → Table companies + lien avec clients
-10. ✅ **STT keywords boost 4/4** → Reconnaissance optimale des entreprises
+5.  **Nouveau flux identification** → Demande épellation du nom
+6.  **Confirmation nom + entreprise** → Double vérification
+7.  **Correction grammaticale** → "1 fois" → "une fois"
+8.  **5 entreprises clientes ajoutées** → CARvertical, Vetodok, RCF Elec, L'ONAsoft, SNCF
+9.  **Migration SQL** → Table companies + lien avec clients
+10.  **STT keywords boost 4/4** → Reconnaissance optimale des entreprises
 
 ### Session 3 - Débogage et Setup
 
-11. ✅ **Logs avec emojis** → 👤 CLIENT, 🤖 IA, 🔊 IA PARLE
-12. ✅ **setup.sh - Cache audio** → Demande avant régénération
-13. ✅ **setup.sh - Mode reset** → `./setup.sh reset` (garde .env)
-14. ✅ **setup.sh - Server.py hors Docker** → Problème résolu aujourd'hui
+11.  **Logs avec emojis** →  CLIENT,  IA,  IA PARLE
+12.  **setup.sh - Cache audio** → Demande avant régénération
+13.  **setup.sh - Mode reset** → `./setup.sh reset` (garde .env)
+14.  **setup.sh - Server.py hors Docker** → Problème résolu aujourd'hui
 
 ### Session 4 - Dashboard et Monitoring (Aujourd'hui)
 
-15. ✅ **Dashboard affiche IP client** → Supprimé (silencieux)
-16. ✅ **Warnings Streamlit deprecated** → Utilisation st.context.headers
-17. ✅ **Warnings pandas psycopg2** → Migration SQLAlchemy
-18. ✅ **Documentation Grafana** → Guide complet créé
+15.  **Dashboard affiche IP client** → Supprimé (silencieux)
+16.  **Warnings Streamlit deprecated** → Utilisation st.context.headers
+17.  **Warnings pandas psycopg2** → Migration SQLAlchemy
+18.  **Documentation Grafana** → Guide complet créé
 
 ---
 
-## 📊 État Actuel du Système
+## État Actuel du Système
 
 ### Conteneurs Docker
 
 | Conteneur | Port | Status | Description |
 |-----------|------|--------|-------------|
-| voicebot-app | 9090 | ✅ Running | Serveur principal |
-| postgres-clients | 5433 | ✅ Running | Base clients |
-| postgres-tickets | 5434 | ✅ Running | Base tickets |
-| voicebot-dashboard | 8501 | ✅ Running | Dashboard Streamlit |
-| voicebot-prometheus | 9092 | ✅ Running | Métriques collector |
-| voicebot-grafana | 3000 | ✅ Running | Visualisation avancée |
+| voicebot-app | 9090 |  Running | Serveur principal |
+| postgres-clients | 5433 |  Running | Base clients |
+| postgres-tickets | 5434 |  Running | Base tickets |
+| voicebot-dashboard | 8501 |  Running | Dashboard Streamlit |
+| voicebot-prometheus | 9092 |  Running | Métriques collector |
+| voicebot-grafana | 3000 |  Running | Visualisation avancée |
 
 ### Endpoints Accessibles
 
@@ -126,7 +126,7 @@ http://145.239.223.188:9092   → Interface Prometheus
 
 ---
 
-## 🚀 Pour Appliquer Toutes les Corrections
+## Pour Appliquer Toutes les Corrections
 
 Sur votre serveur :
 
@@ -143,59 +143,59 @@ docker restart voicebot-dashboard
 docker ps
 
 # Voir les logs
-docker logs -f voicebot-app | grep -E '👤|🤖|🔊'
+docker logs -f voicebot-app | grep -E '||'
 ```
 
 ---
 
-## 📋 Nouveaux Flux de Conversation
+## Nouveaux Flux de Conversation
 
 ### Flux Complet (avec toutes les améliorations)
 
 ```
-1. 🤖 Bonjour, je suis Eko. Quel est votre prénom ?
-   👤 Pierre
+1.  Bonjour, je suis Eko. Quel est votre prénom ?
+    Pierre
 
-2. 🤖 Pourriez-vous épeler votre nom de famille lettre par lettre ?
-   👤 M-A-R-T-I-N
+2.  Pourriez-vous épeler votre nom de famille lettre par lettre ?
+    M-A-R-T-I-N
 
-3. 🤖 Merci. De quelle entreprise appelez-vous ?
-   👤 CARvertical
+3.  Merci. De quelle entreprise appelez-vous ?
+    CARvertical
 
-4. 🤖 Et quelle est votre adresse email ?
-   👤 pierre@carvertical.com
+4.  Et quelle est votre adresse email ?
+    pierre@carvertical.com
 
-5. 🤖 D'accord, bonjour Pierre MARTIN, c'est bien ça ?
-   👤 Oui
+5.  D'accord, bonjour Pierre MARTIN, c'est bien ça ?
+    Oui
 
-6. 🤖 Vous êtes bien de la société CARvertical ?
-   👤 Oui
+6.  Vous êtes bien de la société CARvertical ?
+    Oui
 
-7. 🤖 Je vais vous poser une suite de questions afin que nos techniciens
+7.  Je vais vous poser une suite de questions afin que nos techniciens
       arrivent au mieux à comprendre votre problème.
       Tout d'abord, pouvez-vous me décrire votre problème ?
-   👤 [Décrit le problème]
+    [Décrit le problème]
 ```
 
 **Avantages** :
-- ✅ Nom correctement orthographié (épellation)
-- ✅ Entreprise collectée et confirmée
-- ✅ Double confirmation évite les erreurs
-- ✅ Transition claire avant le diagnostic
+-  Nom correctement orthographié (épellation)
+-  Entreprise collectée et confirmée
+-  Double confirmation évite les erreurs
+-  Transition claire avant le diagnostic
 
 ---
 
-## 📊 Utilisation des Dashboards
+## Utilisation des Dashboards
 
 ### Dashboard Streamlit (Port 8501)
 
 **Accès** : http://145.239.223.188:8501
 
 **Fonctionnalités** :
-- 📊 4 KPIs (Appels du jour, Durée moyenne, Clients mécontents, Pannes Internet)
-- 📋 Liste des 50 derniers tickets avec détails
+-  4 KPIs (Appels du jour, Durée moyenne, Clients mécontents, Pannes Internet)
+-  Liste des 50 derniers tickets avec détails
 - 🎧 Lecture audio de chaque appel (conversion RAW → WAV)
-- 🔍 Recherche par sentiment, type de problème, etc.
+-  Recherche par sentiment, type de problème, etc.
 
 **Quand l'utiliser** :
 - Analyser un appel spécifique
@@ -211,10 +211,10 @@ docker logs -f voicebot-app | grep -E '👤|🤖|🔊'
 **Login** : `admin` / `admin` (à changer lors de la première connexion)
 
 **Fonctionnalités** :
-- 💰 Métriques ROI (coût par appel, économies cache)
-- 📈 Graphiques temps réel (appels/heure, latences)
-- 📊 Distribution des problèmes (Internet, Mobile, etc.)
-- 🎯 Taux de résolution automatique
+-  Métriques ROI (coût par appel, économies cache)
+-  Graphiques temps réel (appels/heure, latences)
+-  Distribution des problèmes (Internet, Mobile, etc.)
+-  Taux de résolution automatique
 - 🔔 Alertes (optionnel)
 
 **Quand l'utiliser** :
@@ -226,7 +226,7 @@ docker logs -f voicebot-app | grep -E '👤|🤖|🔊'
 
 ---
 
-## 🎯 Métriques Clés à Surveiller
+## Métriques Clés à Surveiller
 
 ### 1. ROI / Coûts
 
@@ -261,7 +261,7 @@ Appels simultanés < 10
 
 ---
 
-## 🔧 Commandes Utiles
+## Commandes Utiles
 
 ### Gestion des Conteneurs
 
@@ -270,7 +270,7 @@ Appels simultanés < 10
 docker ps
 
 # Voir les logs avec emojis (débogage conversations)
-docker logs -f voicebot-app | grep -E '👤|🤖|🔊'
+docker logs -f voicebot-app | grep -E '||'
 
 # Redémarrer un conteneur spécifique
 docker restart voicebot-app
@@ -339,7 +339,7 @@ ls -lt logs/calls/ | head -10
 
 ---
 
-## 📂 Fichiers Importants
+## Fichiers Importants
 
 ```
 Backup-LLM/
@@ -374,14 +374,14 @@ Backup-LLM/
 
 ---
 
-## ✅ Checklist de Vérification Finale
+## Checklist de Vérification Finale
 
 Vérifiez que tout fonctionne :
 
 ### Système de Base
 - [ ] Voicebot démarre sans erreur
 - [ ] PostgreSQL (clients + tickets) accessible
-- [ ] Logs affichent les emojis 👤🤖🔊
+- [ ] Logs affichent les emojis 
 - [ ] Cache audio chargé (31 fichiers)
 
 ### Nouveau Flux de Conversation
@@ -404,7 +404,7 @@ Vérifiez que tout fonctionne :
 - [ ] KPIs affichés
 - [ ] Tickets listés
 - [ ] Audio lecture fonctionnelle
-- [ ] Pas de message IP affiché ✅
+- [ ] Pas de message IP affiché 
 
 ### Grafana (3000)
 - [ ] Accessible dans le navigateur
@@ -420,21 +420,21 @@ Vérifiez que tout fonctionne :
 
 ---
 
-## 🎉 Tout est Prêt !
+## Tout est Prêt !
 
 **Résumé** :
-- ✅ 18 problèmes corrigés au total
-- ✅ Nouveau flux de conversation avec épellation
-- ✅ 5 entreprises clientes ajoutées
-- ✅ Système de débogage avec emojis
-- ✅ Dashboard Streamlit silencieux et sans warnings
-- ✅ Grafana pré-configuré avec dashboard ROI
-- ✅ Enregistrement audio de tous les appels
-- ✅ Documentation complète
+-  18 problèmes corrigés au total
+-  Nouveau flux de conversation avec épellation
+-  5 entreprises clientes ajoutées
+-  Système de débogage avec emojis
+-  Dashboard Streamlit silencieux et sans warnings
+-  Grafana pré-configuré avec dashboard ROI
+-  Enregistrement audio de tous les appels
+-  Documentation complète
 
 ---
 
-## 📞 Support
+## Support
 
 ### Voir l'État Complet
 
@@ -471,4 +471,4 @@ ee69a48 - feat: Amélioration du débogage et ajout option reset dans setup.sh
 **Version Finale** : 2.1
 **Date** : 2025-12-31
 **Branche** : `claude/fix-all-issues-ssGib`
-**Status** : ✅ Tous les problèmes résolus et testés
+**Status** :  Tous les problèmes résolus et testés

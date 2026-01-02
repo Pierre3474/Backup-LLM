@@ -1,20 +1,20 @@
-# 🔄 Guide pour Merger Tout dans Main
+#  Guide pour Merger Tout dans Main
 
-## ✅ État Actuel
+## État Actuel
 
 Tous vos changements sont sur la branche : **`claude/fix-all-issues-ssGib`**
 
 Cette branche contient **7 commits** avec toutes les améliorations :
-- ✅ Correction de tous les bugs critiques
-- ✅ Système de débogage amélioré
-- ✅ Nouveau mode reset dans setup.sh
-- ✅ Nouveau flux de conversation structuré
-- ✅ 5 entreprises clientes ajoutées
-- ✅ Documentation complète
+-  Correction de tous les bugs critiques
+-  Système de débogage amélioré
+-  Nouveau mode reset dans setup.sh
+-  Nouveau flux de conversation structuré
+-  5 entreprises clientes ajoutées
+-  Documentation complète
 
 ---
 
-## 🎯 Option 1 : Utiliser Directement la Branche (Recommandé)
+## Option 1 : Utiliser Directement la Branche (Recommandé)
 
 **Sur votre serveur de production**, utilisez simplement cette branche :
 
@@ -34,14 +34,14 @@ docker exec -it postgres-clients psql -U voicebot -d db_clients \
 docker restart voicebot
 
 # Vérifier
-docker logs -f voicebot | grep -E "👤|🤖|🔊"
+docker logs -f voicebot | grep -E "||"
 ```
 
-**✅ C'est tout !** Vous avez maintenant la dernière version avec tous les correctifs.
+** C'est tout !** Vous avez maintenant la dernière version avec tous les correctifs.
 
 ---
 
-## 🎯 Option 2 : Créer une Pull Request sur GitHub
+## Option 2 : Créer une Pull Request sur GitHub
 
 Si vous voulez vraiment tout merger dans `main` :
 
@@ -66,50 +66,50 @@ Si vous voulez vraiment tout merger dans `main` :
 
 4. **Description** (copier-coller) :
    ```markdown
-   ## 🎯 Résumé
+   ##  Résumé
 
    Cette PR merge tous les correctifs et améliorations.
 
-   ## ✅ Changements Inclus
+   ##  Changements Inclus
 
    ### 1. Correction de Bugs Critiques
-   - ✅ Fix fonction get_recent_tickets() incomplète
-   - ✅ Correction des 3 bare exceptions
-   - ✅ Suppression imports dupliqués
-   - ✅ Ajout logging aux exceptions silencieuses
+   -  Fix fonction get_recent_tickets() incomplète
+   -  Correction des 3 bare exceptions
+   -  Suppression imports dupliqués
+   -  Ajout logging aux exceptions silencieuses
 
    ### 2. Système de Débogage Amélioré
-   - ✅ Logs avec emojis (👤 CLIENT, 🤖 IA, 🔊 IA PARLE)
-   - ✅ Meilleure traçabilité des conversations
-   - ✅ Logs de latence LLM
+   -  Logs avec emojis ( CLIENT,  IA,  IA PARLE)
+   -  Meilleure traçabilité des conversations
+   -  Logs de latence LLM
 
    ### 3. Nouveau Mode Reset
-   - ✅ ./setup.sh reset (garde le .env)
-   - ✅ ./setup.sh clean (supprime tout)
-   - ✅ Script quick_reset.sh automatique
+   -  ./setup.sh reset (garde le .env)
+   -  ./setup.sh clean (supprime tout)
+   -  Script quick_reset.sh automatique
 
    ### 4. Nouveau Flux de Conversation
-   - ✅ Demande prénom → épellation nom → entreprise → email
-   - ✅ Confirmation nom et entreprise
-   - ✅ Correction "1 fois" → "une fois"
+   -  Demande prénom → épellation nom → entreprise → email
+   -  Confirmation nom et entreprise
+   -  Correction "1 fois" → "une fois"
 
    ### 5. Entreprises Clientes
-   - ✅ 5 entreprises ajoutées
-   - ✅ Keywords STT boost 4/4
-   - ✅ Migration SQL table companies
+   -  5 entreprises ajoutées
+   -  Keywords STT boost 4/4
+   -  Migration SQL table companies
 
    ### 6. Documentation
-   - ✅ DEPLOYMENT_GUIDE.md
-   - ✅ GUIDE_RESET.md
-   - ✅ CHANGELOG_DEBUG.md
-   - ✅ CHANGELOG_CONVERSATION_FLOW.md
+   -  DEPLOYMENT_GUIDE.md
+   -  GUIDE_RESET.md
+   -  CHANGELOG_DEBUG.md
+   -  CHANGELOG_CONVERSATION_FLOW.md
 
-   ## 📊 Statistiques
+   ##  Statistiques
 
    - Fichiers modifiés : 8
    - Lignes ajoutées : ~700
    - Commits : 7
-   - Tests : ✅ Tous passent
+   - Tests :  Tous passent
    ```
 
 5. **Merger la PR** :
@@ -118,7 +118,7 @@ Si vous voulez vraiment tout merger dans `main` :
 
 ---
 
-## 🎯 Option 3 : Utiliser Git en Ligne de Commande
+## Option 3 : Utiliser Git en Ligne de Commande
 
 Si vous avez accès SSH/HTTPS à GitHub sans restrictions :
 
@@ -144,7 +144,7 @@ git push origin main
 
 ---
 
-## 📝 Commits Inclus
+## Commits Inclus
 
 ```
 2512648 - docs: Ajout changelog détaillé du nouveau flux de conversation
@@ -156,7 +156,7 @@ ee69a48 - feat: Amélioration du débogage et ajout option reset dans setup.sh
 
 ---
 
-## ✅ Vérification Post-Déploiement
+## Vérification Post-Déploiement
 
 ```bash
 # Vérifier la branche
@@ -175,34 +175,34 @@ docker exec -it postgres-clients psql -U voicebot -d db_clients -c "SELECT * FRO
 
 ---
 
-## 🎉 Résultat Final
+## Résultat Final
 
 Après avoir suivi l'une de ces options, vous aurez :
 
-✅ Tous les bugs corrigés
-✅ Système de débogage avec emojis
-✅ Nouveau flux de conversation
-✅ 5 entreprises clientes configurées
-✅ Documentation complète
-✅ Mode reset fonctionnel
+ Tous les bugs corrigés
+ Système de débogage avec emojis
+ Nouveau flux de conversation
+ 5 entreprises clientes configurées
+ Documentation complète
+ Mode reset fonctionnel
 
 ---
 
-## 💡 Recommandation
+## Recommandation
 
 **J'utiliserais l'Option 1** (utiliser directement la branche `claude/fix-all-issues-ssGib`) car :
-- ✅ Plus simple et rapide
-- ✅ Pas besoin de gérer les protections de branche
-- ✅ Tous les changements sont déjà testés et fonctionnels
-- ✅ Vous pouvez toujours créer la PR plus tard si besoin
+-  Plus simple et rapide
+-  Pas besoin de gérer les protections de branche
+-  Tous les changements sont déjà testés et fonctionnels
+-  Vous pouvez toujours créer la PR plus tard si besoin
 
 ---
 
-## 📞 Besoin d'Aide ?
+## Besoin d'Aide ?
 
 Si vous rencontrez des problèmes :
 1. Vérifiez que vous êtes sur la bonne branche : `git branch`
 2. Vérifiez les commits : `git log --oneline -10`
 3. Vérifiez l'état : `git status`
 
-**Tout est prêt à être déployé !** 🚀
+**Tout est prêt à être déployé !** 

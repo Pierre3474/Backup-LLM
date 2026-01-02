@@ -1,6 +1,6 @@
-# 📊 Guide Grafana - Monitoring Voicebot
+#  Guide Grafana - Monitoring Voicebot
 
-## 🎯 Qu'est-ce que Grafana ?
+## Qu'est-ce que Grafana ?
 
 **Grafana** est votre tableau de bord principal pour monitorer les performances et le ROI du voicebot en temps réel.
 
@@ -10,7 +10,7 @@
 
 ---
 
-## 🌐 Accès à Grafana
+## Accès à Grafana
 
 ```
 http://145.239.223.188:3000
@@ -20,11 +20,11 @@ http://145.239.223.188:3000
 - **Username** : `admin`
 - **Password** : `admin`
 
-⚠️ **IMPORTANT** : Changez le mot de passe lors de la première connexion !
+ **IMPORTANT** : Changez le mot de passe lors de la première connexion !
 
 ---
 
-## ✅ Vérification que Grafana Tourne
+## Vérification que Grafana Tourne
 
 ```bash
 # Vérifier le conteneur
@@ -45,11 +45,11 @@ HTTP Server Listen addr=0.0.0.0:3000 protocol=http
 
 ---
 
-## 📊 Dashboard Pré-configuré : "Voicebot ROI"
+## Dashboard Pré-configuré : "Voicebot ROI"
 
 Grafana est déjà configuré avec un dashboard complet qui affiche :
 
-### 1. 💰 Métriques ROI (Coûts)
+### 1.  Métriques ROI (Coûts)
 
 | Métrique | Description | Formule |
 |----------|-------------|---------|
@@ -57,7 +57,7 @@ Grafana est déjà configuré avec un dashboard complet qui affiche :
 | **Économies cache TTS** | % d'économies grâce au cache | (Cache hits / Total requests) * 100 |
 | **Coût total journalier** | Dépenses API du jour | Somme de toutes les API |
 
-### 2. 📞 Métriques Business
+### 2.  Métriques Business
 
 | Métrique | Description |
 |----------|-------------|
@@ -66,7 +66,7 @@ Grafana est déjà configuré avec un dashboard complet qui affiche :
 | **Durée moyenne** | Temps moyen de traitement |
 | **Sentiment client** | Distribution positif/neutre/négatif |
 
-### 3. ⚡ Métriques Performance
+### 3.  Métriques Performance
 
 | Métrique | Description |
 |----------|-------------|
@@ -83,7 +83,7 @@ Grafana est déjà configuré avec un dashboard complet qui affiche :
 
 ---
 
-## 🔧 Configuration Actuelle
+## Configuration Actuelle
 
 ### 1. Source de Données : Prometheus
 
@@ -109,7 +109,7 @@ Ce dashboard est automatiquement chargé au démarrage de Grafana.
 
 ---
 
-## 🚀 Démarrage de Grafana
+## Démarrage de Grafana
 
 ### Avec Docker Compose
 
@@ -145,7 +145,7 @@ curl http://localhost:3000/api/health
 
 ---
 
-## 📈 Utilisation du Dashboard
+## Utilisation du Dashboard
 
 ### 1. Accéder au Dashboard Pré-configuré
 
@@ -171,7 +171,7 @@ Activez le rafraîchissement automatique :
 
 ---
 
-## 🔍 Métriques Disponibles
+## Métriques Disponibles
 
 Toutes les métriques exposées par le voicebot :
 
@@ -220,7 +220,7 @@ voicebot_llm_response_seconds{task="understanding"}
 
 ---
 
-## 💡 Exemples de Requêtes PromQL
+## Exemples de Requêtes PromQL
 
 ### Coût Total par Appel
 
@@ -258,7 +258,7 @@ rate(voicebot_calls_total[1h]) * 3600
 
 ---
 
-## 🎨 Personnaliser le Dashboard
+## Personnaliser le Dashboard
 
 ### Ajouter un Nouveau Panel
 
@@ -303,13 +303,13 @@ Thresholds:
 
 | Feature | Grafana (Port 3000) | Streamlit (Port 8501) |
 |---------|---------------------|------------------------|
-| **Métriques temps réel** | ✅ Oui | ❌ Non |
-| **Graphiques avancés** | ✅ Oui | ❌ Non |
-| **Alertes** | ✅ Oui | ❌ Non |
-| **Historique** | ✅ Oui (Prometheus) | ❌ Non |
-| **Détails des tickets** | ❌ Non | ✅ Oui |
-| **Écoute audio** | ❌ Non | ✅ Oui |
-| **ROI / Coûts** | ✅ Oui | ❌ Non |
+| **Métriques temps réel** |  Oui |  Non |
+| **Graphiques avancés** |  Oui |  Non |
+| **Alertes** |  Oui |  Non |
+| **Historique** |  Oui (Prometheus) |  Non |
+| **Détails des tickets** |  Non |  Oui |
+| **Écoute audio** |  Non |  Oui |
+| **ROI / Coûts** |  Oui |  Non |
 
 **Recommandation** : Utilisez les deux !
 - **Grafana** pour le monitoring global et les tendances
@@ -317,9 +317,9 @@ Thresholds:
 
 ---
 
-## 🔧 Résolution de Problèmes
+## Résolution de Problèmes
 
-### ❌ "Unable to connect to Prometheus"
+### "Unable to connect to Prometheus"
 
 **Cause** : Prometheus n'est pas accessible
 
@@ -340,7 +340,7 @@ curl http://localhost:9092/api/v1/query?query=up
 
 ---
 
-### ❌ "No data" dans les graphiques
+### "No data" dans les graphiques
 
 **Cause** : Aucune métrique collectée (pas d'appels)
 
@@ -348,7 +348,7 @@ curl http://localhost:9092/api/v1/query?query=up
 
 ---
 
-### ❌ Dashboard "Voicebot ROI" introuvable
+### Dashboard "Voicebot ROI" introuvable
 
 **Cause** : Dashboard non chargé automatiquement
 
@@ -366,7 +366,7 @@ docker restart voicebot-grafana
 
 ---
 
-### ❌ Impossible de se connecter (mot de passe oublié)
+### Impossible de se connecter (mot de passe oublié)
 
 **Solution** : Réinitialiser le mot de passe admin
 
@@ -382,7 +382,7 @@ docker compose up -d grafana
 
 ---
 
-## 📊 Ports du Stack de Monitoring
+## Ports du Stack de Monitoring
 
 | Service | Port | URL | Description |
 |---------|------|-----|-------------|
@@ -394,7 +394,7 @@ docker compose up -d grafana
 
 ---
 
-## ✅ Checklist de Démarrage
+## Checklist de Démarrage
 
 Avant d'utiliser Grafana :
 
@@ -409,28 +409,28 @@ Avant d'utiliser Grafana :
 
 ---
 
-## 🎉 Exemple de Dashboard Complet
+## Exemple de Dashboard Complet
 
 Votre dashboard Grafana devrait afficher :
 
 ```
 ╔══════════════════════════════════════════════════════════════╗
-║                    📊 VOICEBOT ROI DASHBOARD                 ║
+║                     VOICEBOT ROI DASHBOARD                 ║
 ╠══════════════════════════════════════════════════════════════╣
 ║                                                              ║
-║  💰 COÛTS (Aujourd'hui)                                      ║
+║   COÛTS (Aujourd'hui)                                      ║
 ║  ┌─────────────┬──────────────┬─────────────┬──────────────┐║
 ║  │ Coût Total  │ Coût/Appel   │ Économies   │ Cache Hit    │║
 ║  │   $2.45     │    $0.12     │   $1.80     │     65%      │║
 ║  └─────────────┴──────────────┴─────────────┴──────────────┘║
 ║                                                              ║
-║  📞 BUSINESS KPIs                                            ║
+║   BUSINESS KPIs                                            ║
 ║  ┌─────────────┬──────────────┬─────────────┬──────────────┐║
 ║  │   Appels    │ Résolution   │  Duration   │  Sentiment   │║
 ║  │     20      │     85%      │    120s     │  🙂 70%      │║
 ║  └─────────────┴──────────────┴─────────────┴──────────────┘║
 ║                                                              ║
-║  📈 GRAPHIQUES TEMPS RÉEL                                    ║
+║   GRAPHIQUES TEMPS RÉEL                                    ║
 ║  ┌──────────────────────────────────────────────────────────┐║
 ║  │ Appels par heure                                         │║
 ║  │ ████▁▁▁███▁▁████▁▁▁██                                    │║
@@ -448,7 +448,7 @@ Votre dashboard Grafana devrait afficher :
 
 ---
 
-## 🚀 Commandes Rapides
+## Commandes Rapides
 
 ```bash
 # Démarrer le monitoring complet
@@ -470,7 +470,7 @@ docker restart voicebot-app voicebot-prometheus voicebot-grafana
 
 ---
 
-**Status** : ✅ Grafana pré-configuré et prêt à l'emploi
+**Status** :  Grafana pré-configuré et prêt à l'emploi
 **Date** : 2025-12-31
 **Version** : 2.1
 **Port** : 3000

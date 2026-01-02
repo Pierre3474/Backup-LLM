@@ -1,26 +1,26 @@
-# 🔐 Guide de Sécurité - Variables d'Environnement
+#  Guide de Sécurité - Variables d'Environnement
 
-## 📋 Vue d'Ensemble
+## Vue d'Ensemble
 
 Toutes les informations sensibles (mots de passe, clés API, etc.) sont maintenant stockées dans le fichier `.env` et **jamais** dans le code source ou dans `docker-compose.yml`.
 
 ---
 
-## ✅ Ce qui a été Sécurisé
+## Ce qui a été Sécurisé
 
 | Variable | Description | Où c'était avant | Maintenant |
 |----------|-------------|------------------|------------|
 | `DB_PASSWORD` | Mot de passe PostgreSQL | Hardcodé dans docker-compose.yml | `.env` |
 | `GRAFANA_ADMIN_USER` | Username Grafana | Hardcodé dans docker-compose.yml | `.env` |
 | `GRAFANA_ADMIN_PASSWORD` | Mot de passe Grafana | Hardcodé dans docker-compose.yml | `.env` |
-| `ELEVENLABS_API_KEY` | Clé API ElevenLabs | `.env` | `.env` ✅ |
-| `DEEPGRAM_API_KEY` | Clé API Deepgram | `.env` | `.env` ✅ |
-| `GROQ_API_KEY` | Clé API Groq | `.env` | `.env` ✅ |
-| `AMI_PASSWORD` | Mot de passe Asterisk AMI | `.env` | `.env` ✅ |
+| `ELEVENLABS_API_KEY` | Clé API ElevenLabs | `.env` | `.env`  |
+| `DEEPGRAM_API_KEY` | Clé API Deepgram | `.env` | `.env`  |
+| `GROQ_API_KEY` | Clé API Groq | `.env` | `.env`  |
+| `AMI_PASSWORD` | Mot de passe Asterisk AMI | `.env` | `.env`  |
 
 ---
 
-## 🚀 Configuration Initiale
+## Configuration Initiale
 
 ### 1. Copier le Fichier Template
 
@@ -63,9 +63,9 @@ AMI_PASSWORD=VotreMotDePasseAMI_Fort_Ici
 
 ---
 
-## 🔒 Bonnes Pratiques de Sécurité
+## Bonnes Pratiques de Sécurité
 
-### ✅ À FAIRE
+### À FAIRE
 
 1. **Changez TOUS les mots de passe par défaut**
    ```bash
@@ -100,9 +100,9 @@ AMI_PASSWORD=VotreMotDePasseAMI_Fort_Ici
 
 ---
 
-### ❌ À NE JAMAIS FAIRE
+### À NE JAMAIS FAIRE
 
-1. ❌ **Ne committez JAMAIS le .env dans Git**
+1.  **Ne committez JAMAIS le .env dans Git**
    ```bash
    # Si vous avez accidentellement commité .env :
    git rm --cached .env
@@ -111,32 +111,32 @@ AMI_PASSWORD=VotreMotDePasseAMI_Fort_Ici
    # Puis changez TOUTES vos clés/mots de passe !
    ```
 
-2. ❌ **Ne partagez JAMAIS le .env par email/chat**
+2.  **Ne partagez JAMAIS le .env par email/chat**
    - Utilisez des canaux sécurisés (ex: partage chiffré)
 
-3. ❌ **Ne loggez JAMAIS les variables sensibles**
+3.  **Ne loggez JAMAIS les variables sensibles**
    ```python
-   # ❌ MAUVAIS
+   #  MAUVAIS
    logger.info(f"API Key: {api_key}")
 
-   # ✅ BON
+   #  BON
    logger.info("API Key configured successfully")
    ```
 
-4. ❌ **N'utilisez JAMAIS les mots de passe par défaut en production**
+4.  **N'utilisez JAMAIS les mots de passe par défaut en production**
 
-5. ❌ **Ne stockez JAMAIS les secrets dans le code**
+5.  **Ne stockez JAMAIS les secrets dans le code**
    ```python
-   # ❌ MAUVAIS
+   #  MAUVAIS
    password = "hardcoded_password"
 
-   # ✅ BON
+   #  BON
    password = os.getenv("DB_PASSWORD")
    ```
 
 ---
 
-## 🔄 Mise à Jour des Variables
+## Mise à Jour des Variables
 
 ### Changer un Mot de Passe
 
@@ -162,7 +162,7 @@ docker logs voicebot-db-clients
 docker logs voicebot-db-tickets
 ```
 
-**⚠️ ATTENTION** : Changer le mot de passe PostgreSQL supprime les données !
+** ATTENTION** : Changer le mot de passe PostgreSQL supprime les données !
 
 ---
 
@@ -207,7 +207,7 @@ docker logs -f voicebot-app | grep -i elevenlabs
 
 ---
 
-## 🔍 Vérification de la Sécurité
+## Vérification de la Sécurité
 
 ### Checklist de Sécurité
 
@@ -230,7 +230,7 @@ docker compose config | grep -A 5 environment
 
 ---
 
-## 📊 Variables d'Environnement Requises
+## Variables d'Environnement Requises
 
 ### Obligatoires
 
@@ -294,7 +294,7 @@ docker compose config | grep -A 5 environment
 
 ---
 
-## 📝 Template de Sauvegarde Sécurisée
+## Template de Sauvegarde Sécurisée
 
 Pour sauvegarder votre `.env` de manière sécurisée :
 
@@ -311,20 +311,20 @@ gpg --decrypt .env.gpg > .env
 
 ---
 
-## ✅ Résumé
+## Résumé
 
 | Action | Status |
 |--------|--------|
-| Mots de passe PostgreSQL dans .env | ✅ Fait |
-| Identifiants Grafana dans .env | ✅ Fait |
-| .env dans .gitignore | ✅ Fait |
-| .env.example créé | ✅ Fait |
-| Documentation sécurité | ✅ Fait |
-| Variables hardcodées supprimées | ✅ Fait |
+| Mots de passe PostgreSQL dans .env |  Fait |
+| Identifiants Grafana dans .env |  Fait |
+| .env dans .gitignore |  Fait |
+| .env.example créé |  Fait |
+| Documentation sécurité |  Fait |
+| Variables hardcodées supprimées |  Fait |
 
 ---
 
-**🔒 Vos secrets sont maintenant sécurisés !**
+** Vos secrets sont maintenant sécurisés !**
 
 **Rappel** : Changez TOUS les mots de passe par défaut avant de déployer en production.
 
@@ -332,4 +332,4 @@ gpg --decrypt .env.gpg > .env
 
 **Date** : 2025-12-31
 **Version** : 2.2
-**Sécurité** : ✅ Renforcée
+**Sécurité** :  Renforcée

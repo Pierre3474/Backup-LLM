@@ -158,7 +158,7 @@ Pour supprimer toutes les données de test :
 ./clean_test_data.sh
 ```
 
-⚠️ **Attention** : Cette action est irréversible. Les données de test seront supprimées définitivement.
+ **Attention** : Cette action est irréversible. Les données de test seront supprimées définitivement.
 
 ## Ajouter vos Propres Données
 
@@ -178,9 +178,9 @@ Tous les appels de test sont loggés dans :
 
 Format des logs :
 ```
-👤 CLIENT: [transcription de la parole du client]
-🤖 IA: [réponse de l'IA]
-🔊 IA PARLE: [phrase audio jouée]
+ CLIENT: [transcription de la parole du client]
+ IA: [réponse de l'IA]
+ IA PARLE: [phrase audio jouée]
 ```
 
 ## Base de Tickets de Test

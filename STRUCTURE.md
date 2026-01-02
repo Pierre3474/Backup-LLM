@@ -2,11 +2,11 @@
 
 Ce document décrit l'organisation des fichiers et dossiers du projet.
 
-## 📁 Structure des Dossiers
+## Structure des Dossiers
 
 ```
 Backup-LLM/
-├── 📄 Fichiers de configuration
+├── Fichiers de configuration
 │   ├── config.py              # Configuration centralisée (API keys, timeouts, phrases)
 │   ├── prompts.yaml           # Prompts pour l'IA conversationnelle
 │   ├── stt_keywords.yaml      # Mots-clés pour la reconnaissance vocale
@@ -15,14 +15,14 @@ Backup-LLM/
 │   ├── Dockerfile            # Image Docker pour le voicebot
 │   └── docker-compose.yml    # Orchestration des services
 │
-├── 🐍 Code Source Principal
+├── Code Source Principal
 │   ├── server.py             # Serveur AudioSocket (cœur du voicebot)
 │   ├── audio_utils.py        # Utilitaires audio (conversion, cache)
 │   ├── db_utils.py           # Utilitaires base de données
 │   ├── metrics.py            # Métriques Prometheus
 │   └── generate_cache.py     # Génération du cache audio TTS
 │
-├── 🗄️ Base de Données
+├── Base de Données
 │   ├── init_clients.sql      # Initialisation DB clients
 │   ├── init_tickets.sql      # Initialisation DB tickets
 │   └── migrations/           # Migrations de schéma
@@ -31,7 +31,7 @@ Backup-LLM/
 │       ├── 004_remove_transcript_add_client_info.sql
 │       └── 005_add_companies_table.sql
 │
-├── 📊 Monitoring
+├── Monitoring
 │   └── monitoring/
 │       ├── dashboard.py                      # Interface Streamlit de supervision
 │       ├── prometheus.yml                    # Config Prometheus
@@ -40,21 +40,20 @@ Backup-LLM/
 │           └── dashboards/
 │               └── voicebot-roi.json        # Dashboard ROI
 │
-├── 🧪 Données de Test
+├── Données de Test
 │   ├── add_clement_dumas.sh       # Ajouter Clément DUMAS (Total)
 │   ├── add_clement_dumas.sql      # SQL pour Clément DUMAS
 │   ├── insert_test_clients.sql    # 35 clients + 11 entreprises
 │   ├── load_test_data.sh          # Charger les données de test
 │   └── clean_test_data.sh         # Nettoyer les données de test
 │
-├── 🔧 Scripts Utilitaires
+├── Scripts Utilitaires
 │   ├── setup.sh                   # Installation et génération du cache
 │   └── scripts/
 │       ├── reset_database.sh      # Réinitialiser la DB
-│       ├── reset_database.sql     # SQL de réinitialisation
-│       └── quick_reset.sh         # Reset rapide (dev)
+│       └── reset_database.sql     # SQL de réinitialisation
 │
-├── 📚 Documentation
+├── Documentation
 │   ├── README.md                  # Documentation principale
 │   ├── STRUCTURE.md              # Ce fichier (structure du projet)
 │   ├── docs/
@@ -78,17 +77,17 @@ Backup-LLM/
 │   │       ├── RECAP_FINAL.md
 │   │       └── STATUS_FIXES.md
 │
-├── 💾 Données Runtime
+├── Données Runtime
 │   ├── assets/cache/             # Cache audio TTS (34 phrases .raw)
 │   ├── cache/                    # Cache temporaire
 │   ├── logs/calls/               # Logs des appels (par date)
 │   └── __pycache__/              # Cache Python
 │
-└── 🔒 Configuration Privée (non versionné)
+└── Configuration Privée (non versionné)
     └── .env                      # Variables d'environnement (secrets)
 ```
 
-## 📄 Fichiers Clés
+## Fichiers Clés
 
 ### Configuration
 
@@ -126,7 +125,7 @@ Backup-LLM/
 | `init_tickets.sql` | Initialisation table tickets (problem, severity, status) |
 | `migrations/` | Migrations progressives du schéma |
 
-## 🗂️ Organisation par Fonction
+## Organisation par Fonction
 
 ### Développement
 - Code source : `server.py`, `*.py`
@@ -154,7 +153,7 @@ Backup-LLM/
 - SQL : `insert_test_clients.sql`
 - Guide : `docs/guides/DONNEES_TEST.md`
 
-## 🚀 Flux de Travail Typique
+## Flux de Travail Typique
 
 ### Première Installation
 ```bash
@@ -201,7 +200,7 @@ docker compose up -d voicebot
 docker logs -f voicebot-app
 ```
 
-## 📦 Cache Audio
+## Cache Audio
 
 Le cache audio contient **34 phrases pré-générées** en format `.raw` (8kHz, mono, 16-bit) :
 
@@ -220,7 +219,7 @@ assets/cache/
 
 **Performance** : Cache hit = ~100ms vs API TTS = 1-2s (90% plus rapide)
 
-## 🔐 Fichiers Sensibles (non versionés)
+## Fichiers Sensibles (non versionés)
 
 Ces fichiers contiennent des secrets et **ne doivent JAMAIS** être versionés :
 
@@ -245,7 +244,7 @@ Vérifiez `.gitignore` pour la liste complète.
 | Prononciation | `docs/guides/PRONONCIATION_TTS.md` | Amélioration TTS |
 | Optimisation | `docs/guides/OPTIMISATION_RAPPELS.md` | Optimisation vitesse rappels |
 
-## 🔄 Changelog
+## Changelog
 
 L'historique des changements est documenté dans `docs/changelogs/` :
 
@@ -266,7 +265,7 @@ Pour contribuer au projet :
 
 Voir `docs/guides/MERGE_TO_MAIN_GUIDE.md` pour les détails.
 
-## 📞 Support
+## Support
 
 Pour toute question, voir :
 - `README.md` - Documentation principale
