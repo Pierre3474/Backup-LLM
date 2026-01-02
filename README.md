@@ -11,19 +11,186 @@ Système de **voicebot IA** entièrement automatisé pour le support technique t
 
 ## 📋 Table des Matières
 
-1. [Vue d'ensemble](#-vue-densemble)
-2. [Fonctionnalités](#-fonctionnalités)
-3. [Architecture](#-architecture)
-4. [Installation](#-installation)
-5. [Configuration](#-configuration)
-6. [Services IA](#-services-ia)
-7. [Workflow d'un appel](#-workflow-dun-appel)
-8. [Base de données](#-base-de-données)
-9. [Optimisations](#-optimisations)
-10. [Dashboard](#-dashboard)
-11. [Monitoring ROI](#-monitoring-roi---grafana--prometheus)
-12. [Sécurité](#-sécurité)
-13. [Maintenance](#-maintenance)
+1. [Structure du Projet](#-structure-du-projet)
+2. [Vue d'ensemble](#-vue-densemble)
+3. [Fonctionnalités](#-fonctionnalités)
+4. [Architecture](#-architecture)
+5. [Installation](#-installation)
+6. [Configuration](#-configuration)
+7. [Services IA](#-services-ia)
+8. [Workflow d'un appel](#-workflow-dun-appel)
+9. [Base de données](#-base-de-données)
+10. [Optimisations](#-optimisations)
+11. [Dashboard](#-dashboard)
+12. [Monitoring ROI](#-monitoring-roi---grafana--prometheus)
+13. [Sécurité](#-sécurité)
+14. [Maintenance](#-maintenance)
+
+---
+
+## 📁 Structure du Projet
+
+### Arborescence Complète
+
+```
+Backup-LLM/
+├── 📄 Configuration
+│   ├── .env.example              # Template des variables d'environnement
+│   ├── .gitignore                # Fichiers à exclure du versioning
+│   ├── .dockerignore             # Fichiers à exclure de l'image Docker
+│   ├── config.py                 # Configuration centralisée (API keys, phrases cachées)
+│   ├── docker-compose.yml        # Orchestration des 6 services Docker
+│   ├── Dockerfile                # Image Docker du voicebot
+│   ├── requirements.txt          # Dépendances Python
+│   ├── prompts.yaml              # Prompts pour l'IA conversationnelle
+│   ├── stt_keywords.yaml         # Mots-clés pour améliorer la STT
+│   └── system_prompt_base.yaml   # Prompt système de base
+│
+├── 🐍 Code Source Principal
+│   ├── server.py                 # Serveur AudioSocket (cœur du voicebot)
+│   ├── audio_utils.py            # Conversion audio, cache TTS
+│   ├── db_utils.py               # Connexions PostgreSQL, requêtes
+│   ├── metrics.py                # Métriques Prometheus (latence, coûts)
+│   └── generate_cache.py         # Script de génération du cache audio
+│
+├── 🗄️ Base de Données
+│   ├── init_clients.sql          # Initialisation table clients
+│   ├── init_tickets.sql          # Initialisation table tickets
+│   └── migrations/               # Migrations SQL progressives
+│       ├── 002_increase_phone_number_length.sql
+│       ├── 003_increase_phone_number_clients.sql
+│       ├── 004_remove_transcript_add_client_info.sql
+│       └── 005_add_companies_table.sql
+│
+├── 📊 Monitoring & Supervision
+│   └── monitoring/
+│       ├── dashboard.py          # Dashboard Streamlit (port 8501)
+│       ├── prometheus.yml        # Configuration Prometheus
+│       └── grafana/
+│           ├── provisioning/     # Configuration auto Grafana
+│           │   ├── dashboards/voicebot.yml
+│           │   └── datasources/prometheus.yml
+│           └── dashboards/
+│               └── voicebot-roi.json  # Dashboard ROI complet
+│
+├── 🧪 Données de Test
+│   ├── add_clement_dumas.sh      # Ajouter le client principal (Total)
+│   ├── add_clement_dumas.sql     # SQL pour Clément DUMAS
+│   ├── insert_test_clients.sql   # 36 clients + 11 entreprises de test
+│   ├── load_test_data.sh         # Charger toutes les données de test
+│   └── clean_test_data.sh        # Supprimer les données de test
+│
+├── 🔧 Scripts Utilitaires
+│   ├── setup.sh                  # Installation complète + génération cache
+│   └── scripts/
+│       ├── reset_database.sh     # Réinitialisation complète des DB
+│       ├── reset_database.sql    # SQL de réinitialisation
+│       └── quick_reset.sh        # Reset rapide (développement)
+│
+└── 📚 Documentation
+    ├── README.md                 # Documentation principale (ce fichier)
+    ├── STRUCTURE.md              # Structure détaillée du projet
+    └── docs/
+        ├── asterisk_config.txt   # Configuration Asterisk
+        ├── STT_KEYWORDS_GUIDE.md # Guide mots-clés reconnaissance vocale
+        ├── guides/               # 11 guides détaillés
+        │   ├── APPLY_SECURITY_UPDATE.md    # Sécurisation .env
+        │   ├── ARCHITECTURE_HYBRIDE.md     # Cache vs API TTS
+        │   ├── DASHBOARD_CONFIG.md         # Configuration Streamlit
+        │   ├── DEPLOYMENT_GUIDE.md         # Déploiement complet
+        │   ├── DONNEES_TEST.md             # Gestion données de test
+        │   ├── GRAFANA_GUIDE.md            # Configuration Grafana
+        │   ├── GUIDE_RESET.md              # Réinitialisation système
+        │   ├── MERGE_TO_MAIN_GUIDE.md      # Workflow Git
+        │   ├── OPTIMISATION_RAPPELS.md     # Optimisation vitesse
+        │   ├── PRONONCIATION_TTS.md        # Amélioration prononciation
+        │   └── SECURITY_ENV.md             # Gestion des secrets
+        └── changelogs/           # Historique des changements
+            ├── CHANGELOG_CONVERSATION_FLOW.md
+            ├── CHANGELOG_DEBUG.md
+            ├── RECAP_FINAL.md
+            └── STATUS_FIXES.md
+```
+
+### Rôle de Chaque Fichier Principal
+
+#### Configuration
+
+| Fichier | Rôle | Contenu Important |
+|---------|------|-------------------|
+| `config.py` | Configuration centralisée | API keys, timeouts, 34 phrases cachées, paramètres voix |
+| `.env` | Secrets (non versionné) | DEEPGRAM_API_KEY, GROQ_API_KEY, ELEVENLABS_API_KEY, DB_PASSWORD |
+| `docker-compose.yml` | Orchestration services | 6 services : voicebot, 2x postgres, prometheus, grafana, dashboard |
+| `prompts.yaml` | Prompts IA | Instructions pour Groq (extraction infos, détection sentiment) |
+| `stt_keywords.yaml` | Amélioration STT | 45+ mots-clés pour reconnaissance vocale (connexion, mobile, wifi...) |
+
+#### Code Source
+
+| Fichier | Lignes | Rôle |
+|---------|--------|------|
+| `server.py` | ~1500 | Serveur AudioSocket, machine à états, flow conversationnel complet |
+| `audio_utils.py` | ~200 | Conversion μ-law ↔ PCM, cache audio, resampling 24kHz → 8kHz |
+| `db_utils.py` | ~150 | Connexions asyncio PostgreSQL, requêtes clients/tickets/entreprises |
+| `metrics.py` | ~100 | Export Prometheus (call_duration, tts_cache_hits, api_costs) |
+| `generate_cache.py` | ~80 | Génération des 34 fichiers audio .raw via ElevenLabs |
+
+#### Monitoring
+
+| Fichier | Rôle |
+|---------|------|
+| `monitoring/dashboard.py` | Dashboard Streamlit pour visualiser et gérer les tickets |
+| `monitoring/prometheus.yml` | Collecte métriques toutes les 15s depuis :9091 |
+| `monitoring/grafana/dashboards/voicebot-roi.json` | Dashboard ROI complet avec 10 panels |
+
+#### Base de Données
+
+| Fichier | Rôle |
+|---------|------|
+| `init_clients.sql` | Crée table clients (phone, name, email, company_id, box_model) |
+| `init_tickets.sql` | Crée table tickets (problem, severity, status, sentiment, tag) |
+| `migrations/` | Migrations progressives (ajout colonnes, tables entreprises) |
+
+#### Scripts
+
+| Script | Usage | Rôle |
+|--------|-------|------|
+| `setup.sh` | `./setup.sh` | Installation complète : install deps + génère cache audio |
+| `add_clement_dumas.sh` | `./add_clement_dumas.sh` | Ajoute Clément DUMAS (0781833134) de Total |
+| `load_test_data.sh` | `./load_test_data.sh` | Charge 36 clients + 11 entreprises de test |
+| `scripts/reset_database.sh` | `./scripts/reset_database.sh` | Réinitialise complètement les 2 DB |
+
+### Fichiers Générés (Non Versionnés)
+
+Ces fichiers sont créés automatiquement et **ne sont PAS** dans Git :
+
+```
+├── .env                      # Secrets (OBLIGATOIRE)
+├── assets/cache/             # 34 fichiers audio .raw (8kHz, mono, 16-bit)
+├── logs/calls/               # Logs détaillés des appels (par date)
+├── cache/                    # Cache temporaire Docker
+└── __pycache__/              # Bytecode Python compilé
+```
+
+### Services Docker
+
+Lors du `docker compose up`, **6 services** sont lancés :
+
+| Service | Container | Port | Rôle |
+|---------|-----------|------|------|
+| `voicebot` | voicebot-app | 9090 | Serveur AudioSocket principal |
+| `postgres-clients` | voicebot-db-clients | 5432 | Base clients (phone, name, email, company) |
+| `postgres-tickets` | voicebot-db-tickets | 5433 | Base tickets (problem, severity, status) |
+| `prometheus` | voicebot-prometheus | 9092 | Collecte métriques temps réel |
+| `grafana` | voicebot-grafana | 3000 | Dashboards ROI et monitoring |
+| `dashboard` | voicebot-dashboard | 8501 | Interface Streamlit supervision tickets |
+
+### Accès aux Services
+
+Une fois lancé :
+- **Voicebot AudioSocket** : `145.239.223.188:9090` (Asterisk se connecte ici)
+- **Dashboard Streamlit** : http://145.239.223.188:8501
+- **Grafana ROI** : http://145.239.223.188:3000 (admin/voicebot2024)
+- **Prometheus** : http://145.239.223.188:9092
 
 ---
 
