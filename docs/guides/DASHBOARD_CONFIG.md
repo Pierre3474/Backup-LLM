@@ -113,7 +113,7 @@ http://votre-serveur-ip:8501
 
 Exemple :
 ```
-http://145.239.223.188:8501
+http://YOUR_SERVER_IP:8501
 ```
 
 ---
@@ -346,7 +346,7 @@ DEEPGRAM_API_KEY=xyz...
 GROQ_API_KEY=gsk_...
 
 # === ASTERISK ===
-ASTERISK_HOST=145.239.223.188
+ASTERISK_HOST=YOUR_SERVER_IP
 AMI_USERNAME=admin
 AMI_PASSWORD=secret123
 ```

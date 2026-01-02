@@ -56,13 +56,13 @@ nano .env
 # GRAFANA - DASHBOARD DE MONITORING
 # ===================================================================
 GRAFANA_ADMIN_USER=admin
-GRAFANA_ADMIN_PASSWORD=voicebot2024
+GRAFANA_ADMIN_PASSWORD=VOTRE_MOT_DE_PASSE
 
 # ===================================================================
 # BASE DE DONNÉES POSTGRESQL
 # ===================================================================
 # Si DB_PASSWORD n'existe pas déjà
-DB_PASSWORD=voicebot_secure_2024
+DB_PASSWORD=VOTRE_MOT_DE_PASSE_DB
 ```
 
 ---
@@ -89,7 +89,7 @@ DEEPGRAM_API_KEY=...
 GROQ_API_KEY=gsk_...
 
 # Asterisk
-ASTERISK_HOST=145.239.223.188
+ASTERISK_HOST=YOUR_SERVER_IP
 AMI_USERNAME=admin
 AMI_PASSWORD=votre_mot_de_passe_ami
 ```
@@ -128,14 +128,14 @@ voicebot-prometheus    Up
 
 **Tester Grafana** :
 ```
-URL: http://145.239.223.188:3000
+URL: http://YOUR_SERVER_IP:3000
 Username: admin
 Password: (celui défini dans GRAFANA_ADMIN_PASSWORD)
 ```
 
 **Tester le Dashboard** :
 ```
-URL: http://145.239.223.188:8501
+URL: http://YOUR_SERVER_IP:8501
 ```
 
 **Tester les Métriques** :
@@ -204,7 +204,7 @@ Le fichier `.env` **ne doit JAMAIS** être commité dans Git.
 grep GRAFANA_ADMIN_PASSWORD .env
 
 # Si absente, l'ajouter
-echo "GRAFANA_ADMIN_PASSWORD=voicebot2024" >> .env
+echo "GRAFANA_ADMIN_PASSWORD=VOTRE_MOT_DE_PASSE" >> .env
 
 # Redémarrer Grafana
 docker restart voicebot-grafana
@@ -224,7 +224,7 @@ docker restart voicebot-grafana
 grep DB_PASSWORD .env
 
 # Si absente, l'ajouter
-echo "DB_PASSWORD=voicebot_secure_2024" >> .env
+echo "DB_PASSWORD=VOTRE_MOT_DE_PASSE_DB" >> .env
 
 # Redémarrer
 docker compose down
@@ -243,7 +243,7 @@ docker compose up -d
 grep DB_TICKETS_DSN .env
 
 # Corriger (remplacez par votre mot de passe)
-DB_TICKETS_DSN=postgresql://voicebot:voicebot_secure_2024@postgres-tickets:5432/db_tickets
+DB_TICKETS_DSN=postgresql://voicebot:VOTRE_MOT_DE_PASSE_DB@postgres-tickets:5432/db_tickets
 
 # Redémarrer le dashboard
 docker restart voicebot-dashboard
@@ -259,8 +259,8 @@ Après la mise à jour, vérifiez :
 - [ ] `.env` contient `GRAFANA_ADMIN_PASSWORD`
 - [ ] `.env` contient `DB_PASSWORD`
 - [ ] Tous les conteneurs démarrés (`docker ps`)
-- [ ] Grafana accessible (http://145.239.223.188:3000)
-- [ ] Dashboard accessible (http://145.239.223.188:8501)
+- [ ] Grafana accessible (http://YOUR_SERVER_IP:3000)
+- [ ] Dashboard accessible (http://YOUR_SERVER_IP:8501)
 - [ ] Connexion Grafana fonctionne
 - [ ] Permissions .env sécurisées (`chmod 600`)
 - [ ] `.env` pas dans git (`git status`)

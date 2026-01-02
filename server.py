@@ -79,6 +79,36 @@ def load_stt_keywords() -> list:
         return []
 
 
+def sanitize_call_id(call_id: str) -> str:
+    """
+    Nettoie un call_id pour éviter les caractères dangereux dans les chemins de fichiers
+
+    Args:
+        call_id: ID brut potentiellement avec caractères dangereux
+
+    Returns:
+        ID sécurisé avec uniquement [a-zA-Z0-9_-]
+    """
+    if not call_id:
+        return "unknown"
+
+    # Supprimer les octets nuls et les caractères de contrôle
+    cleaned = call_id.replace('\x00', '').replace('\r', '').replace('\n', '')
+
+    # Garder uniquement les caractères alphanumériques, tirets et underscores
+    cleaned = re.sub(r'[^a-zA-Z0-9_-]', '_', cleaned)
+
+    # Limiter la longueur à 64 caractères
+    cleaned = cleaned[:64]
+
+    # Si vide après nettoyage, générer un ID aléatoire
+    if not cleaned:
+        import uuid
+        cleaned = str(uuid.uuid4())
+
+    return cleaned
+
+
 def clean_email_text(text: str) -> str:
     """Nettoie une transcription d'email (at->@, dot->., etc.)"""
     if not text:
@@ -393,7 +423,8 @@ class CallHandler:
         """Initialise le fichier de log audio RAW"""
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            log_filename = config.LOGS_DIR / f"call_{self.call_id}_{timestamp}.raw"
+            safe_call_id = sanitize_call_id(self.call_id)
+            log_filename = config.LOGS_DIR / f"call_{safe_call_id}_{timestamp}.raw"
             self.audio_log_file = open(log_filename, 'wb')
             logger.info(f"Audio logging: {log_filename}")
         except Exception as e:
@@ -1731,8 +1762,8 @@ class AudioSocketServer:
 
             # Rejeter les requêtes HTTP/HTTPS (scans de sécurité, bots)
             try:
-                first_bytes_str = identifier_bytes[:10].decode('utf-8', errors='ignore')
-                if first_bytes_str.startswith(('GET ', 'POST', 'HEAD', 'PUT', 'DELETE', 'OPTIONS', 'PATCH')):
+                first_bytes_str = identifier_bytes[:20].decode('utf-8', errors='ignore')
+                if first_bytes_str.startswith(('GET ', 'POST', 'HEAD', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'CONNECT ')):
                     logger.warning(f"Rejected HTTP request from scanner: {first_bytes_str[:50]}")
                     writer.close()
                     await writer.wait_closed()
@@ -1743,6 +1774,13 @@ class AudioSocketServer:
             # Rejeter les handshakes TLS/SSL (HTTPS scans)
             if len(identifier_bytes) >= 3 and identifier_bytes[0] == 0x16 and identifier_bytes[1] == 0x03:
                 logger.warning(f"Rejected TLS/SSL handshake from scanner")
+                writer.close()
+                await writer.wait_closed()
+                return
+
+            # Rejeter les connexions RDP (Remote Desktop Protocol)
+            if len(identifier_bytes) >= 3 and identifier_bytes[0] == 0x03 and b'Cookie:' in identifier_bytes:
+                logger.warning(f"Rejected RDP connection attempt")
                 writer.close()
                 await writer.wait_closed()
                 return
@@ -1787,8 +1825,8 @@ class AudioSocketServer:
                     call_id = identifier_bytes[:16].hex()
                     logger.info(f"[{call_id}] New call connected (fallback format)")
 
-            # SÉCURITÉ : Nettoyer call_id de tous les octets nuls résiduels
-            call_id = call_id.replace('\x00', '')
+            # SÉCURITÉ : Nettoyer call_id de tous les octets nuls et caractères dangereux
+            call_id = sanitize_call_id(call_id)
 
             # Vérifier la limite de calls simultanés
             if self.active_calls >= config.MAX_CONCURRENT_CALLS:
