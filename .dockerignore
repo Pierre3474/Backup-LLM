@@ -23,11 +23,9 @@ Dockerfile
 docker-compose*.yml
 .dockerignore
 
-# Documentation
+# Documentation (exclude from Docker image)
 *.md
-README.md
-DASHBOARD_SECURITY.md
-MULTI_IP_SETUP.md
+docs/
 
 # Config files (will be mounted)
 .env
