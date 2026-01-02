@@ -2,11 +2,70 @@
 Configuration centralisée pour le Voicebot SAV Wouippleul
 """
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
 # Charger les variables d'environnement
 load_dotenv()
+
+# === Validation des variables critiques ===
+def validate_env_vars():
+    """Vérifie que toutes les variables d'environnement critiques sont définies"""
+    missing_vars = []
+    invalid_vars = []
+
+    # Variables API obligatoires
+    required_vars = {
+        "DEEPGRAM_API_KEY": os.getenv("DEEPGRAM_API_KEY"),
+        "GROQ_API_KEY": os.getenv("GROQ_API_KEY"),
+        "ELEVENLABS_API_KEY": os.getenv("ELEVENLABS_API_KEY"),
+        "ELEVENLABS_VOICE_ID": os.getenv("ELEVENLABS_VOICE_ID"),
+        "AMI_SECRET": os.getenv("AMI_SECRET"),
+    }
+
+    # Vérifier les variables manquantes
+    for var_name, var_value in required_vars.items():
+        if not var_value:
+            missing_vars.append(var_name)
+
+    # Vérifier les DSN avec placeholders non remplacés
+    db_clients_dsn = os.getenv("DB_CLIENTS_DSN", "")
+    db_tickets_dsn = os.getenv("DB_TICKETS_DSN", "")
+
+    if "user:pass" in db_clients_dsn or "CHANGEZ_CE_MOT_DE_PASSE" in db_clients_dsn:
+        invalid_vars.append("DB_CLIENTS_DSN (contient des placeholders)")
+    if "user:pass" in db_tickets_dsn or "CHANGEZ_CE_MOT_DE_PASSE" in db_tickets_dsn:
+        invalid_vars.append("DB_TICKETS_DSN (contient des placeholders)")
+
+    # Afficher les erreurs si nécessaire
+    if missing_vars or invalid_vars:
+        print("\n" + "=" * 70)
+        print("ERREUR: Configuration .env incomplète ou invalide")
+        print("=" * 70)
+
+        if missing_vars:
+            print("\nVariables manquantes dans .env:")
+            for var in missing_vars:
+                print(f"  - {var}")
+
+        if invalid_vars:
+            print("\nVariables invalides (placeholders non remplacés):")
+            for var in invalid_vars:
+                print(f"  - {var}")
+
+        print("\nActions requises:")
+        print("  1. Copiez .env.example vers .env")
+        print("     cp .env.example .env")
+        print("  2. Éditez .env et remplacez TOUTES les valeurs placeholders")
+        print("  3. Relancez le voicebot")
+        print("\nDocumentation: voir docs/guides/SECURITY_ENV.md")
+        print("=" * 70 + "\n")
+
+        sys.exit(1)
+
+# Valider immédiatement au chargement du module
+validate_env_vars()
 
 # === API Configuration ===
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY")
@@ -150,8 +209,8 @@ GROQ_TEMPERATURE = 0.7
 GROQ_MAX_TOKENS = 150
 
 # === ElevenLabs TTS Settings ===
-# Voice ID : défini dans .env (fallback: Adrien - French voice)
-ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "N2lVS1w4EtoT3dr4eOWO")
+# Voice ID : DOIT être défini dans .env (validation faite au démarrage)
+ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID")
 ELEVENLABS_MODEL = os.getenv("ELEVENLABS_MODEL", "eleven_turbo_v2_5")  # Modèle Turbo v2.5 (optimisé téléphonie, -50% coût, <300ms latence)
 ELEVENLABS_STABILITY = 0.5  # Stabilité de la voix (0.0 - 1.0)
 ELEVENLABS_SIMILARITY_BOOST = 0.75  # Clarté de la voix (0.0 - 1.0)
