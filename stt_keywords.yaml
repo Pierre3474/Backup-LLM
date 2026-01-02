@@ -1,0 +1,174 @@
+# Configuration des keywords pour améliorer la reconnaissance STT (Deepgram)
+# Format: "mot:intensité" (0-4, où 4 = boost maximum)
+#
+# Comment utiliser ce fichier:
+# 1. Ajoutez les noms/prénoms de vos clients les plus fréquents
+# 2. Ajoutez les termes techniques spécifiques à votre domaine
+# 3. Ajoutez les noms d'entreprises, produits, services
+# 4. L'intensité recommandée: 3 pour noms propres, 2 pour termes techniques
+#
+# ⚠️ IMPORTANT: Limitez à 100-200 keywords maximum pour de bonnes performances
+
+# === PRÉNOMS FRANÇAIS COURANTS ===
+firstnames:
+  - "Pierre:3"
+  - "Jean:3"
+  - "Marie:3"
+  - "Sophie:3"
+  - "Nicolas:3"
+  - "Laurent:3"
+  - "François:3"
+  - "Philippe:3"
+  - "Michel:3"
+  - "Alain:3"
+  - "Bernard:3"
+  - "Christophe:3"
+  - "Sébastien:3"
+  - "David:3"
+  - "Thomas:3"
+  - "Julie:3"
+  - "Isabelle:3"
+  - "Nathalie:3"
+  - "Catherine:3"
+  - "Sylvie:3"
+  - "Martine:3"
+  - "Patrick:3"
+  - "Stéphane:3"
+  - "Pascal:3"
+  - "Olivier:3"
+
+# === NOMS DE FAMILLE FRANÇAIS COURANTS ===
+lastnames:
+  - "Martin:3"
+  - "Bernard:3"
+  - "Dubois:3"
+  - "Thomas:3"
+  - "Robert:3"
+  - "Richard:3"
+  - "Petit:3"
+  - "Durand:3"
+  - "Leroy:3"
+  - "Moreau:3"
+  - "Simon:3"
+  - "Laurent:3"
+  - "Lefebvre:3"
+  - "Michel:3"
+  - "Garcia:3"
+  - "David:3"
+  - "Bertrand:3"
+  - "Roux:3"
+  - "Vincent:3"
+  - "Fournier:3"
+  - "Morel:3"
+  - "Girard:3"
+  - "Andre:3"
+  - "Mercier:3"
+  - "Dupont:3"
+
+# === OPÉRATEURS TÉLÉCOMS / FAI FRANÇAIS ===
+telecom_companies:
+  - "Orange:3"
+  - "SFR:3"
+  - "Bouygues:3"
+  - "Bouygues Telecom:3"
+  - "Free:3"
+  - "La Poste Mobile:3"
+  - "Sosh:3"
+  - "RED:3"
+  - "RED by SFR:3"
+  - "Cdiscount:3"
+  - "NRJ:3"
+  - "Prixtel:3"
+  - "Lebara:3"
+  - "Lycamobile:3"
+
+# === ENTREPRISES CLIENTES ===
+client_companies:
+  - "CARvertical:4"
+  - "Vetodok:4"
+  - "RCF Elec:4"
+  - "L'ONAsoft:4"
+  - "ONAsoft:4"
+  - "SNCF:4"
+
+# === ÉQUIPEMENTS / BOX INTERNET ===
+equipment:
+  - "Livebox:3"
+  - "Freebox:3"
+  - "Bbox:3"
+  - "Freebox Pop:3"
+  - "Freebox Delta:3"
+  - "Freebox Revolution:3"
+  - "Livebox 5:3"
+  - "Livebox 6:3"
+  - "Bbox Ultym:3"
+  - "Bbox Must:3"
+  - "routeur:2"
+  - "modem:2"
+  - "décodeur:2"
+  - "répéteur:2"
+  - "amplificateur:2"
+
+# === TERMES TECHNIQUES TÉLÉCOMS ===
+technical_terms:
+  - "fibre:2"
+  - "ADSL:2"
+  - "VDSL:2"
+  - "4G:2"
+  - "5G:2"
+  - "WiFi:2"
+  - "ethernet:2"
+  - "débit:2"
+  - "synchronisation:2"
+  - "latence:2"
+  - "ping:2"
+  - "connexion:2"
+  - "réseau:2"
+  - "signal:2"
+  - "antenne:2"
+  - "satellite:2"
+  - "point d'accès:2"
+  - "carte SIM:2"
+  - "forfait:2"
+  - "renouvellement:2"
+  - "résiliation:2"
+  - "portabilité:2"
+  - "ligne:2"
+  - "numéro fixe:2"
+  - "numéro mobile:2"
+
+# === PROBLÈMES COURANTS (SAV) ===
+common_issues:
+  - "coupure:2"
+  - "panne:2"
+  - "dysfonctionnement:2"
+  - "ralentissement:2"
+  - "interruption:2"
+  - "déconnexion:2"
+  - "indisponible:2"
+  - "inaccessible:2"
+  - "défaillance:2"
+  - "incompatibilité:2"
+
+# === VILLES FRANÇAISES (optionnel, pour localisation) ===
+cities:
+  - "Paris:2"
+  - "Marseille:2"
+  - "Lyon:2"
+  - "Toulouse:2"
+  - "Nice:2"
+  - "Nantes:2"
+  - "Strasbourg:2"
+  - "Montpellier:2"
+  - "Bordeaux:2"
+  - "Lille:2"
+  - "Rennes:2"
+  - "Reims:2"
+  - "Le Havre:2"
+  - "Saint-Étienne:2"
+  - "Toulon:2"
+  - "Grenoble:2"
+  - "Dijon:2"
+  - "Angers:2"
+  - "Nîmes:2"
+  - "Villeurbanne:2"

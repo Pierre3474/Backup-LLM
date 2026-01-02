@@ -1,0 +1,30 @@
+# Configuration Prometheus pour Voicebot SAV Wouippleul
+# Collecte des métriques sur le port 9091
+
+global:
+  scrape_interval: 15s  # Collecte toutes les 15 secondes
+  evaluation_interval: 15s  # Évalue les règles toutes les 15 secondes
+  external_labels:
+    monitor: 'voicebot-monitor'
+    environment: 'production'
+
+# Configuration de collecte des métriques
+scrape_configs:
+  # Métriques du voicebot
+  - job_name: 'voicebot'
+    static_configs:
+      - targets: ['voicebot:9091']  # Nom du service Docker + port métriques
+        labels:
+          service: 'voicebot-app'
+          component: 'main'
+
+    # Augmenter le timeout pour les métriques volumineuses
+    scrape_timeout: 10s
+
+  # Métriques Prometheus lui-même (monitoring du monitoring)
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+          component: 'monitoring'

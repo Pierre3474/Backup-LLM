@@ -4,11 +4,62 @@ Gestion asynchrone des clients et tickets
 """
 import asyncpg
 import logging
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 import config
 
 logger = logging.getLogger(__name__)
+
+
+def sanitize_string(value: Any) -> Any:
+    """
+    Nettoie une chaîne de caractères en retirant les octets nuls (0x00)
+    qui sont incompatibles avec PostgreSQL UTF-8.
+
+    Args:
+        value: Valeur à nettoyer (str, int, None, etc.)
+
+    Returns:
+        Valeur nettoyée (chaîne sans octets nuls, ou valeur originale si non-string)
+
+    Example:
+        >>> sanitize_string("Hello\x00World")
+        'HelloWorld'
+        >>> sanitize_string(None)
+        None
+        >>> sanitize_string(123)
+        123
+    """
+    if isinstance(value, str):
+        # Retirer tous les octets nuls de la chaîne
+        return value.replace('\x00', '')
+    return value
+
+
+def sanitize_dict(data: Dict) -> Dict:
+    """
+    Nettoie récursivement toutes les chaînes d'un dictionnaire
+    en retirant les octets nuls (0x00).
+
+    Args:
+        data: Dictionnaire à nettoyer
+
+    Returns:
+        Dictionnaire avec toutes les chaînes nettoyées
+
+    Example:
+        >>> sanitize_dict({'name': 'John\x00Doe', 'age': 30})
+        {'name': 'JohnDoe', 'age': 30}
+    """
+    cleaned = {}
+    for key, value in data.items():
+        if isinstance(value, dict):
+            cleaned[key] = sanitize_dict(value)
+        elif isinstance(value, list):
+            cleaned[key] = [sanitize_string(item) for item in value]
+        else:
+            cleaned[key] = sanitize_string(value)
+    return cleaned
 
 
 # === Connection Pools (singleton) ===
@@ -111,13 +162,17 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
         call_data: Dictionnaire contenant les données de l'appel
             - call_uuid (str): UUID de l'appel
             - phone_number (str): Numéro de téléphone
+            - client_name (str): Nom complet du client (prénom + nom)
+            - client_email (str): Email du client
             - problem_type (str): "internet" ou "mobile"
             - status (str): "resolved", "transferred", "failed"
             - sentiment (str): "positive", "neutral", "negative"
-            - summary (str): Résumé de l'appel
+            - summary (str): Résumé de l'appel (généré par LLM, filtré)
             - duration_seconds (int): Durée en secondes
             - tag (str): Tag de classification (ex: "FIBRE_SYNCHRO")
             - severity (str): Sévérité (LOW, MEDIUM, HIGH)
+            - call_date (date): Date de l'appel (JJ/MM/AAAA)
+            - call_time (time): Heure de l'appel (HH:MM:SS)
 
     Returns:
         ID du ticket créé ou None si erreur
@@ -126,13 +181,17 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
         >>> await create_ticket({
         ...     'call_uuid': 'a1b2c3d4',
         ...     'phone_number': '0612345678',
+        ...     'client_name': 'Pierre Dupont',
+        ...     'client_email': 'pierre.dupont@example.com',
         ...     'problem_type': 'internet',
         ...     'status': 'resolved',
         ...     'sentiment': 'positive',
         ...     'summary': 'Problème résolu en redémarrant la box',
         ...     'duration_seconds': 120,
         ...     'tag': 'FIBRE_SYNCHRO',
-        ...     'severity': 'MEDIUM'
+        ...     'severity': 'MEDIUM',
+        ...     'call_date': date(2025, 12, 29),
+        ...     'call_time': time(14, 30, 0)
         ... })
         42
     """
@@ -141,12 +200,18 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
         return None
 
     try:
+        # SÉCURITÉ : Nettoyer toutes les chaînes pour retirer les octets nuls (0x00)
+        # incompatibles avec PostgreSQL UTF-8
+        clean_data = sanitize_dict(call_data)
+
         async with _tickets_pool.acquire() as conn:
             ticket_id = await conn.fetchval(
                 """
                 INSERT INTO tickets (
                     call_uuid,
                     phone_number,
+                    client_name,
+                    client_email,
                     problem_type,
                     status,
                     sentiment,
@@ -154,24 +219,30 @@ async def create_ticket(call_data: Dict) -> Optional[int]:
                     duration_seconds,
                     tag,
                     severity,
+                    call_date,
+                    call_time,
                     created_at
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 RETURNING id
                 """,
-                call_data['call_uuid'],
-                call_data['phone_number'],
-                call_data.get('problem_type', 'unknown'),
-                call_data.get('status', 'unknown'),
-                call_data.get('sentiment', 'neutral'),
-                call_data.get('summary', 'Aucun résumé disponible'),
-                call_data.get('duration_seconds', 0),
-                call_data.get('tag', 'UNKNOWN'),
-                call_data.get('severity', 'MEDIUM'),
+                clean_data['call_uuid'],
+                clean_data['phone_number'],
+                clean_data.get('client_name'),  # Peut être NULL
+                clean_data.get('client_email'),  # Peut être NULL
+                clean_data.get('problem_type', 'unknown'),
+                clean_data.get('status', 'unknown'),
+                clean_data.get('sentiment', 'neutral'),
+                clean_data.get('summary', 'Aucun résumé disponible'),
+                clean_data.get('duration_seconds', 0),
+                clean_data.get('tag', 'UNKNOWN'),
+                clean_data.get('severity', 'MEDIUM'),
+                clean_data.get('call_date', datetime.now().date()),
+                clean_data.get('call_time', datetime.now().time()),
                 datetime.now()
             )
 
-            logger.info(f"✓ Ticket created: {ticket_id} (call: {call_data['call_uuid']}, tag: {call_data.get('tag', 'UNKNOWN')})")
+            logger.info(f"✓ Ticket created: {ticket_id} (call: {clean_data['call_uuid']}, tag: {clean_data.get('tag', 'UNKNOWN')})")
             return ticket_id
 
     except Exception as e:
@@ -228,41 +299,6 @@ async def get_recent_tickets(limit: int = 10) -> list:
         logger.error("Tickets pool not initialized")
         return []
 
-
-async def is_technician_available(max_active: int = 5, window_minutes: int = 10) -> bool:
-    """
-    Vérifie la disponibilité des techniciens en fonction des tickets transférés récemment.
-
-    Args:
-        max_active: Nombre maximum de tickets transférés considérés comme acceptables.
-        window_minutes: Fenêtre glissante en minutes pour mesurer la charge récente.
-
-    Returns:
-        True si la charge est inférieure au seuil, False sinon.
-    """
-    if not _tickets_pool:
-        logger.error("Tickets pool not initialized")
-        return True  # fail-open pour éviter de bloquer le transfert
-
-    try:
-        since_ts = datetime.now() - timedelta(minutes=window_minutes)
-        async with _tickets_pool.acquire() as conn:
-            active_transfers = await conn.fetchval(
-                """
-                SELECT COUNT(*) FROM tickets
-                WHERE status = 'transferred'
-                  AND created_at >= $1
-                """,
-                since_ts
-            )
-
-        logger.info(f"Technician load (last {window_minutes}m): {active_transfers}/{max_active}")
-        return active_transfers < max_active
-
-    except Exception as e:
-        logger.error(f"Error checking technician availability: {e}")
-        return True  # fail-open pour ne pas bloquer la prise en charge
-
     try:
         async with _tickets_pool.acquire() as conn:
             rows = await conn.fetch(
@@ -307,6 +343,41 @@ async def is_technician_available(max_active: int = 5, window_minutes: int = 10)
     except Exception as e:
         logger.error(f"Error fetching recent tickets: {e}")
         return []
+
+
+async def is_technician_available(max_active: int = 5, window_minutes: int = 10) -> bool:
+    """
+    Vérifie la disponibilité des techniciens en fonction des tickets transférés récemment.
+
+    Args:
+        max_active: Nombre maximum de tickets transférés considérés comme acceptables.
+        window_minutes: Fenêtre glissante en minutes pour mesurer la charge récente.
+
+    Returns:
+        True si la charge est inférieure au seuil, False sinon.
+    """
+    if not _tickets_pool:
+        logger.error("Tickets pool not initialized")
+        return True  # fail-open pour éviter de bloquer le transfert
+
+    try:
+        since_ts = datetime.now() - timedelta(minutes=window_minutes)
+        async with _tickets_pool.acquire() as conn:
+            active_transfers = await conn.fetchval(
+                """
+                SELECT COUNT(*) FROM tickets
+                WHERE status = 'transferred'
+                  AND created_at >= $1
+                """,
+                since_ts
+            )
+
+        logger.info(f"Technician load (last {window_minutes}m): {active_transfers}/{max_active}")
+        return active_transfers < max_active
+
+    except Exception as e:
+        logger.error(f"Error checking technician availability: {e}")
+        return True  # fail-open pour ne pas bloquer la prise en charge
 
 
 async def get_pending_tickets(phone_number: str) -> list:

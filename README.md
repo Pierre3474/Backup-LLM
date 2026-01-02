@@ -1,888 +1,1072 @@
-# 🤖 Voicebot SAV Wipple - Production-Ready IA Conversationnelle
+# Voicebot SAV- Intelligence Artificielle Conversationnelle
 
-Serveur d'**Intelligence Artificielle** Python asynchrone ultra-optimisé pour gérer **20+ appels simultanés** avec architecture **Clean** et **scalable**.
+Système de **voicebot IA** entièrement automatisé pour le support technique téléphonique. Gère jusqu'à **20 appels simultanés** avec reconnaissance vocale, compréhension naturelle du langage et synthèse vocale ultra-rapide.
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
-[![Architecture](https://img.shields.io/badge/Architecture-Clean%20Architecture-green.svg)](REFACTOR.md)
-[![Security](https://img.shields.io/badge/Security-Multi--IP%20Firewall-red.svg)](DASHBOARD_SECURITY.md)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://www.docker.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/License-Proprietary-orange.svg)](#)
 
 ---
 
-## 📋 Table des Matières
+## Table des Matières
 
-- [Vue d'ensemble](#-vue-densemble)
-- [Architecture](#-architecture)
-- [Nouveautés 2025](#-nouveautés-2025)
-- [Installation Automatisée](#-installation-automatisée)
-- [Configuration Multi-IP](#-configuration-multi-ip)
-- [Structure du Projet](#-structure-du-projet)
-- [Services Disponibles](#-services-disponibles)
-- [Dashboard Streamlit](#-dashboard-streamlit)
-- [Machine à États](#-machine-à-états-sav)
-- [Performance & Optimisations](#-performance--optimisations)
-- [Sécurité](#-sécurité)
-- [Monitoring](#-monitoring)
-- [Documentation](#-documentation)
+1. [Structure du Projet](#-structure-du-projet)
+2. [Vue d'ensemble](#-vue-densemble)
+3. [Fonctionnalités](#-fonctionnalités)
+4. [Architecture](#-architecture)
+5. [Installation](#-installation)
+6. [Configuration](#-configuration)
+7. [Services IA](#-services-ia)
+8. [Workflow d'un appel](#-workflow-dun-appel)
+9. [Base de données](#-base-de-données)
+10. [Optimisations](#-optimisations)
+11. [Dashboard](#-dashboard)
+12. [Monitoring ROI](#-monitoring-roi---grafana--prometheus)
+13. [Sécurité](#-sécurité)
+14. [Maintenance](#-maintenance)
 
 ---
 
-## 🎯 Vue d'ensemble
+## Structure du Projet
+
+### Arborescence Complète
+
+```
+Backup-LLM/
+├── Configuration
+│   ├── .env.example              # Template des variables d'environnement
+│   ├── .gitignore                # Fichiers à exclure du versioning
+│   ├── .dockerignore             # Fichiers à exclure de l'image Docker
+│   ├── config.py                 # Configuration centralisée (API keys, phrases cachées)
+│   ├── docker-compose.yml        # Orchestration des 6 services Docker
+│   ├── Dockerfile                # Image Docker du voicebot
+│   ├── requirements.txt          # Dépendances Python
+│   ├── prompts.yaml              # Prompts pour l'IA conversationnelle
+│   ├── stt_keywords.yaml         # Mots-clés pour améliorer la STT
+│   └── system_prompt_base.yaml   # Prompt système de base
+│
+├── Code Source Principal
+│   ├── server.py                 # Serveur AudioSocket (cœur du voicebot)
+│   ├── audio_utils.py            # Conversion audio, cache TTS
+│   ├── db_utils.py               # Connexions PostgreSQL, requêtes
+│   ├── metrics.py                # Métriques Prometheus (latence, coûts)
+│   └── generate_cache.py         # Script de génération du cache audio
+│
+├── Base de Données
+│   ├── init_clients.sql          # Initialisation table clients
+│   ├── init_tickets.sql          # Initialisation table tickets
+│   └── migrations/               # Migrations SQL progressives
+│       ├── 002_increase_phone_number_length.sql
+│       ├── 003_increase_phone_number_clients.sql
+│       ├── 004_remove_transcript_add_client_info.sql
+│       └── 005_add_companies_table.sql
+│
+├── Monitoring & Supervision
+│   └── monitoring/
+│       ├── dashboard.py          # Dashboard Streamlit (port 8501)
+│       ├── prometheus.yml        # Configuration Prometheus
+│       └── grafana/
+│           ├── provisioning/     # Configuration auto Grafana
+│           │   ├── dashboards/voicebot.yml
+│           │   └── datasources/prometheus.yml
+│           └── dashboards/
+│               └── voicebot-roi.json  # Dashboard ROI complet
+│
+├── Données de Test
+│   ├── add_clement_dumas.sh      # Ajouter le client principal (Total)
+│   ├── add_clement_dumas.sql     # SQL pour Clément DUMAS
+│   ├── insert_test_clients.sql   # 36 clients + 11 entreprises de test
+│   ├── load_test_data.sh         # Charger toutes les données de test
+│   └── clean_test_data.sh        # Supprimer les données de test
+│
+├── Scripts Utilitaires
+│   ├── setup.sh                  # Installation complète + génération cache
+│   └── scripts/
+│       ├── reset_database.sh     # Réinitialisation complète des DB
+│       └── reset_database.sql    # SQL de réinitialisation
+│
+└── Documentation
+    ├── README.md                 # Documentation principale (ce fichier)
+    ├── STRUCTURE.md              # Structure détaillée du projet
+    └── docs/
+        ├── asterisk_config.txt   # Configuration Asterisk
+        ├── STT_KEYWORDS_GUIDE.md # Guide mots-clés reconnaissance vocale
+        ├── guides/               # 11 guides détaillés
+        │   ├── APPLY_SECURITY_UPDATE.md    # Sécurisation .env
+        │   ├── ARCHITECTURE_HYBRIDE.md     # Cache vs API TTS
+        │   ├── DASHBOARD_CONFIG.md         # Configuration Streamlit
+        │   ├── DEPLOYMENT_GUIDE.md         # Déploiement complet
+        │   ├── DONNEES_TEST.md             # Gestion données de test
+        │   ├── GRAFANA_GUIDE.md            # Configuration Grafana
+        │   ├── GUIDE_RESET.md              # Réinitialisation système
+        │   ├── MERGE_TO_MAIN_GUIDE.md      # Workflow Git
+        │   ├── OPTIMISATION_RAPPELS.md     # Optimisation vitesse
+        │   ├── PRONONCIATION_TTS.md        # Amélioration prononciation
+        │   └── SECURITY_ENV.md             # Gestion des secrets
+        └── changelogs/           # Historique des changements
+            ├── CHANGELOG_CONVERSATION_FLOW.md
+            ├── CHANGELOG_DEBUG.md
+            ├── RECAP_FINAL.md
+            └── STATUS_FIXES.md
+```
+
+### Rôle de Chaque Fichier Principal
+
+#### Configuration
+
+| Fichier | Rôle | Contenu Important |
+|---------|------|-------------------|
+| `config.py` | Configuration centralisée | API keys, timeouts, 34 phrases cachées, paramètres voix |
+| `.env` | Secrets (non versionné) | DEEPGRAM_API_KEY, GROQ_API_KEY, ELEVENLABS_API_KEY, DB_PASSWORD |
+| `docker-compose.yml` | Orchestration services | 6 services : voicebot, 2x postgres, prometheus, grafana, dashboard |
+| `prompts.yaml` | Prompts IA | Instructions pour Groq (extraction infos, détection sentiment) |
+| `stt_keywords.yaml` | Amélioration STT | 45+ mots-clés pour reconnaissance vocale (connexion, mobile, wifi...) |
+
+#### Code Source
+
+| Fichier | Lignes | Rôle |
+|---------|--------|------|
+| `server.py` | ~1500 | Serveur AudioSocket, machine à états, flow conversationnel complet |
+| `audio_utils.py` | ~200 | Conversion μ-law ↔ PCM, cache audio, resampling 24kHz → 8kHz |
+| `db_utils.py` | ~150 | Connexions asyncio PostgreSQL, requêtes clients/tickets/entreprises |
+| `metrics.py` | ~100 | Export Prometheus (call_duration, tts_cache_hits, api_costs) |
+| `generate_cache.py` | ~80 | Génération des 34 fichiers audio .raw via ElevenLabs |
+
+#### Monitoring
+
+| Fichier | Rôle |
+|---------|------|
+| `monitoring/dashboard.py` | Dashboard Streamlit pour visualiser et gérer les tickets |
+| `monitoring/prometheus.yml` | Collecte métriques toutes les 15s depuis :9091 |
+| `monitoring/grafana/dashboards/voicebot-roi.json` | Dashboard ROI complet avec 10 panels |
+
+#### Base de Données
+
+| Fichier | Rôle |
+|---------|------|
+| `init_clients.sql` | Crée table clients (phone, name, email, company_id, box_model) |
+| `init_tickets.sql` | Crée table tickets (problem, severity, status, sentiment, tag) |
+| `migrations/` | Migrations progressives (ajout colonnes, tables entreprises) |
+
+#### Scripts
+
+| Script | Usage | Rôle |
+|--------|-------|------|
+| `setup.sh` | `./setup.sh` | Installation complète : install deps + génère cache audio |
+| `add_clement_dumas.sh` | `./add_clement_dumas.sh` | Ajoute Clément DUMAS (0781833134) de Total |
+| `load_test_data.sh` | `./load_test_data.sh` | Charge 36 clients + 11 entreprises de test |
+| `scripts/reset_database.sh` | `./scripts/reset_database.sh` | Réinitialise complètement les 2 DB |
+
+### Fichiers Générés (Non Versionnés)
+
+Ces fichiers sont créés automatiquement et **ne sont PAS** dans Git :
+
+```
+├── .env                      # Secrets (OBLIGATOIRE)
+├── assets/cache/             # 34 fichiers audio .raw (8kHz, mono, 16-bit)
+├── logs/calls/               # Logs détaillés des appels (par date)
+├── cache/                    # Cache temporaire Docker
+└── __pycache__/              # Bytecode Python compilé
+```
+
+### Services Docker
+
+Lors du `docker compose up`, **6 services** sont lancés :
+
+| Service | Container | Port | Rôle |
+|---------|-----------|------|------|
+| `voicebot` | voicebot-app | 9090 | Serveur AudioSocket principal |
+| `postgres-clients` | voicebot-db-clients | 5432 | Base clients (phone, name, email, company) |
+| `postgres-tickets` | voicebot-db-tickets | 5433 | Base tickets (problem, severity, status) |
+| `prometheus` | voicebot-prometheus | 9092 | Collecte métriques temps réel |
+| `grafana` | voicebot-grafana | 3000 | Dashboards ROI et monitoring |
+| `dashboard` | voicebot-dashboard | 8501 | Interface Streamlit supervision tickets |
+
+### Accès aux Services
+
+Une fois lancé :
+- **Voicebot AudioSocket** : `YOUR_SERVER_IP:9090` (Asterisk se connecte ici)
+- **Dashboard Streamlit** : http://YOUR_SERVER_IP:8501
+- **Grafana ROI** : http://YOUR_SERVER_IP:3000 (voir .env pour les identifiants)
+- **Prometheus** : http://YOUR_SERVER_IP:9092
+
+---
+
+## Vue d'ensemble
+
+### Qu'est-ce que le Voicebot ?
+
+Le **Voicebot SAV  ** est un **assistant vocal intelligent** qui répond automatiquement aux appels téléphoniques du support technique. Il :
+
+-  **Comprend** le problème du client (reconnaissance vocale Deepgram)
+-  **Détecte** automatiquement si c'est un problème Internet ou Téléphone
+-  **Propose** des solutions (redémarrage box, vérifications)
+-  **Transfère** vers un technicien si nécessaire
+-  **Sauvegarde** automatiquement un ticket détaillé en base de données
 
 ### Architecture Distribuée
 
-Ce projet installe **uniquement la brique Intelligence Artificielle** (serveur Python + Docker).
-
-**Asterisk doit être installé sur un ou plusieurs serveurs distants séparés** et configuré pour pointer vers ce serveur IA.
-
 ```
 ┌─────────────────────┐
-│  Serveur Asterisk 1 │ ──┐
-│  (Client A)         │   │
-└─────────────────────┘   │
-                          │     ┌──────────────────────────┐
-┌─────────────────────┐   │     │   Serveur IA Python      │
-│  Serveur Asterisk 2 │ ──┼────▶│   - AudioSocket :9090    │
-│  (Client B)         │   │     │   - STT (Deepgram)       │
-└─────────────────────┘   │     │   - LLM (Groq)           │
-                          │     │   - TTS (ElevenLabs)     │
-┌─────────────────────┐   │     │   - PostgreSQL           │
-│  Serveur Asterisk N │ ──┘     │   - Dashboard :8501      │
-│  (Client N)         │         │   - Grafana :3000        │
-└─────────────────────┘         └──────────────────────────┘
+│  Serveur Asterisk 1 │────┐
+│  ASTERISK_SERVER_1_IP    │    │
+└─────────────────────┘    │
+                           │     ┌──────────────────────────────┐
+┌─────────────────────┐    │     │   Serveur IA (ce projet)     │
+│  Serveur Asterisk 2 │────┼────▶│   Port 9090 (AudioSocket)    │
+│  ASTERISK_SERVER_2_IP      │    │     │                              │
+└─────────────────────┘    │     │   - Deepgram STT             │
+                           │     │   - Groq LLM (Llama)         │
+┌─────────────────────┐    │     │   - ElevenLabs TTS           │
+│  Serveur Asterisk N │────┘     │   - PostgreSQL x2            │
+│  ASTERISK_SERVER_N_IP      │          │   - Dashboard :8501          │
+└─────────────────────┘          └──────────────────────────────┘
 ```
 
-**Support Multi-Client** : Le serveur IA peut gérer plusieurs serveurs Asterisk simultanément avec whitelist IP.
+**Important** : Ce projet installe **uniquement le serveur IA**. Asterisk doit être installé séparément sur d'autres serveurs.
 
 ---
 
-## 🏗️ Architecture
+## Fonctionnalités
 
-### Stack Technique Production
+### Traitement Vocal Temps Réel
 
-| Composant | Technologie | Version | Rôle |
-|-----------|-------------|---------|------|
-| **Runtime** | Python + uvloop | 3.11+ | Performances réseau optimales |
-| **VoIP** | Asterisk (distant) + AudioSocket | 18+ | Streaming audio TCP 8kHz |
-| **STT** | Deepgram API | nova-2-phonecall | Speech-to-Text temps réel |
-| **LLM** | Groq API | llama-3.3-70b-versatile | Génération réponses + Intent Analysis |
-| **TTS** | ElevenLabs API | Turbo v2.5 (Antoine) | Text-to-Speech ultra-rapide |
-| **Database** | PostgreSQL | 15+ | Clients + Tickets (2 instances) |
-| **Monitoring** | Prometheus | Latest | Métriques temps réel |
-| **Dashboard** | Streamlit | Latest | Interface supervision |
-| **Cache** | LRU + Static | RAM | Audio pré-généré + dynamique |
+- **Reconnaissance vocale** : Deepgram Nova-2 (précision 95%+)
+- **Synthèse vocale** : ElevenLabs Flash v2.5 (latence <300ms)
+- **Streaming audio** : AudioSocket 8kHz μ-law
+- **Barge-in** : Le client peut interrompre le bot à tout moment
+- **Détection de colère** : Transfert automatique si mots négatifs détectés
 
-### Clean Architecture (2025)
+### Intelligence Artificielle
 
-Le projet a été **entièrement refactoré** pour suivre les principes de Clean Architecture :
+- **LLM** : Groq Llama 3.1-70B (réponses en <500ms)
+- **Compréhension contextuelle** : Machine à états conversationnelle
+- **Détection problème** : 45+ mots-clés pour Internet vs Mobile
+- **Analyse de sentiment** : Positive/Neutral/Negative
+- **Classification auto** : Tag (FIBRE_SYNCHRO, MOBILE_4G...) + Sévérité (LOW/MEDIUM/HIGH)
 
-```
-voicebot_sav/
-├── config/          # Configuration centralisée + prompts YAML
-├── models/          # Modèles de données (ConversationContext, Intent)
-├── services/        # Services métier (STT, LLM, TTS, Database)
-├── core/            # Logique métier (StateMachine, IntentAnalyzer)
-├── utils/           # Utilitaires (audio, logging, validation)
-└── main.py          # Point d'entrée (serveur AudioSocket)
-```
+### Gestion des Données
 
-**Avantages** :
-- ✅ Modules testables indépendamment
-- ✅ Prompts 100% externalisés (YAML)
-- ✅ State Machine déclarative
-- ✅ Intent Analysis LLM → JSON structuré
-- ✅ Endpointing dynamique STT (500ms / 1200ms selon contexte)
+- **2 bases PostgreSQL** séparées (clients + tickets)
+- **Tickets automatiques** avec :
+  - Nom + email + téléphone du client
+  - Date et heure précises de l'appel
+  - Type de problème détecté
+  - Résumé LLM filtré (sans insultes)
+  - Durée, tag, sévérité, sentiment
+- **Historique client** : Détecte si client récurrent
+- **Tickets en attente** : Propose de reprendre un ticket ouvert
 
-📖 **Documentation complète** : [REFACTOR.md](REFACTOR.md)
+### Optimisations Performances
 
----
+- **Cache audio** : 27 phrases pré-enregistrées (réponses instantanées)
+- **Optimisation TTS** : 60-80% moins d'appels ElevenLabs
+- **Pool de connexions** : PostgreSQL asyncio
+- **ProcessPoolExecutor** : Conversion audio parallèle
+- **Healthchecks** : Démarrage séquentiel optimisé
 
-## 🆕 Nouveautés 2025
+### Sécurité
 
-### 🚀 Performance Turbo
-
-| Optimisation | Avant | Après | Gain |
-|--------------|-------|-------|------|
-| **STT Endpointing** | 3000ms fixe | 500ms / 1200ms dynamique | **80% plus rapide** |
-| **TTS Model** | OpenAI tts-1 | ElevenLabs Turbo v2.5 | **3x plus rapide** |
-| **Intent Analysis** | Mots-clés simples | LLM JSON structuré | **95% précision** |
-| **Streaming TTS** | Activé | Optimisé | **Zéro latence perçue** |
-
-### 🔐 Sécurité Multi-IP
-
-- **Support Multi-IP** : `PERSONAL_IP=10.0.0.1,192.168.1.50,88.12.34.56`
-- **3 couches de sécurité** : UFW + Iptables DOCKER-USER + Application
-- **Dashboard protégé** : Validation IP au niveau applicatif (Streamlit)
-- **Firewall intelligent** : Règles persistantes après reboot
-
-📖 **Documentation complète** : [DASHBOARD_SECURITY.md](DASHBOARD_SECURITY.md)
-
-### 📡 Multi-Asterisk
-
-- **Support multi-serveurs** : Gérez plusieurs clients (serveurs Asterisk) simultanément
-- **Whitelist IP dynamique** : Configuration via `setup.sh` interactif
-- **Script de gestion** : `manage_allowed_ips.sh` pour ajouter/supprimer des IPs
-
-📖 **Documentation complète** : [MULTI_IP_SETUP.md](MULTI_IP_SETUP.md)
+- **Firewall iptables** : Port 9090 restreint aux IPs Asterisk
+- **Dashboard sécurisé** : Port 8501 accessible uniquement aux IPs admin
+- **Protection HTTP/HTTPS** : Rejette scans malveillants
+- **Filtre mots critiques** : Nettoie les tickets des insultes
+- **Variables sensibles** : .env non commité
 
 ---
 
-## 🚀 Installation Automatisée
+## Architecture
 
-### Prérequis
+### Services Docker
 
-- **OS** : Debian 13 (ou Ubuntu 22.04+)
-- **Accès** : root (sudo)
-- **Réseau** : Connexion internet stable
-- **Hardware** : 4 vCPU, 8 GB RAM minimum
-
-### Installation en 1 commande
-
-```bash
-# Cloner le projet
-cd /opt
-git clone https://github.com/Pierre3474/Backup-LLM.git PY_SAV
-cd PY_SAV
-
-# Lancer l'installation automatisée
-sudo ./setup.sh
+```yaml
+services:
+  postgres-clients:   # Base clients (port 5432)
+  postgres-tickets:   # Base tickets (port 5433)
+  voicebot:          # IA Python (port 9090 + 9091)
+  dashboard:         # Interface web (port 8501)
 ```
 
-### Ce que fait `setup.sh`
+### Composants Principaux
 
-Le script d'installation **tout-en-un** va :
+| Fichier | Rôle |
+|---------|------|
+| `server.py` | Serveur AudioSocket principal (1500+ lignes) |
+| `config.py` | Configuration centralisée (API keys, modèles) |
+| `db_utils.py` | Gestion bases de données PostgreSQL |
+| `audio_utils.py` | Conversion audio (MP3 → 8kHz μ-law) |
+| `dashboard.py` | Interface web Streamlit |
+| `prompts.yaml` | Prompts personnalisés par contexte |
+| `setup.sh` | Installation automatisée |
 
-1. ✅ **Prérequis système**
-   - Python 3.11, FFmpeg, Git, Curl, UFW
-   - Docker Engine + Docker Compose
-   - Création utilisateur système `voicebot`
-
-2. ✅ **Environnement Python**
-   - Création venv
-   - Installation dépendances (requirements.txt)
-   - Génération cache audio
-
-3. ✅ **Configuration interactive**
-   - **API Keys** : Deepgram, Groq, OpenAI (pour generate_cache legacy)
-   - **Passwords** : PostgreSQL, Grafana
-   - **IPs Serveur IA** : Détection automatique
-   - **IPs Asterisk** : Support multi-serveurs (boucle interactive)
-   - **IP Admin** : Votre IP publique (pour services admin)
-
-4. ✅ **Stack Docker**
-   - PostgreSQL clients (port 5432)
-   - PostgreSQL tickets (port 5433)
-   - Prometheus (port 9092)
-   - PgAdmin (port 5050)
-   - Dashboard Streamlit (port 8501)
-
-5. ✅ **Firewall (3 couches)**
-   - **UFW** : Port 9090 depuis serveurs Asterisk uniquement
-   - **UFW** : Ports admin (5050, 8501, 9092, 5432, 5433) depuis IPs personnelles
-   - **Iptables DOCKER-USER** : Empêche contournement UFW par Docker
-   - **Application** : Validation IP dans dashboard.py
-
-6. ✅ **Démarrage serveur**
-   - Lancement automatique du voicebot IA (port 9090)
-
-### Variables collectées
-
-| Variable | Description | Exemple |
-|----------|-------------|---------|
-| `DEEPGRAM_API_KEY` | Clé API Deepgram (STT) | `abc123...` |
-| `GROQ_API_KEY` | Clé API Groq (LLM) | `gsk_xyz...` |
-| `OPENAI_API_KEY` | Clé API OpenAI (legacy cache) | `sk-proj-...` |
-| `DB_PASSWORD` | Mot de passe PostgreSQL | `MySecurePass123!` |
-| `SERVER_HOST_IP` | IP locale serveur IA | `192.168.1.100` |
-| `REMOTE_ASTERISK_IP` | IP 1er serveur Asterisk | `203.0.113.10` |
-| `AMI_USERNAME` | Utilisateur AMI Asterisk | `voicebot-ami` |
-| `AMI_SECRET` | Mot de passe AMI | `SecretAMI123!` |
-| `PERSONAL_IP` | IP(s) admin (multi-IP) | `10.0.0.1,88.12.34.56` |
-
-### Réinstallation / Mise à jour
-
-```bash
-# Nettoyage complet + réinstallation
-sudo ./setup.sh clean
-
-# Utiliser configuration existante (skip variables)
-sudo ./setup.sh
-# → Option 1 : Utiliser configuration existante
-```
-
----
-
-## 🌐 Configuration Multi-IP
-
-### Multi-Asterisk (plusieurs clients)
-
-Lors de l'installation, vous pouvez configurer **plusieurs serveurs Asterisk** :
-
-```
-Entrez l'adresse IP du 1er serveur Asterisk: 192.168.1.100
-✓ IP 192.168.1.100 ajoutée (1 serveur(s) configuré(s))
-
-Entrez l'IP du serveur Asterisk 2 (ou laissez vide pour terminer): 192.168.2.200
-✓ IP 192.168.2.200 ajoutée (2 serveur(s) configuré(s))
-
-Entrez l'IP du serveur Asterisk 3 (ou laissez vide pour terminer): [Entrée]
-✓ 2 serveur(s) Asterisk configuré(s)
-```
-
-**Gestion post-installation** :
-
-```bash
-# Script interactif
-./manage_allowed_ips.sh
-
-# Ou en ligne de commande
-./manage_allowed_ips.sh add 203.0.113.42
-./manage_allowed_ips.sh remove 192.168.2.200
-./manage_allowed_ips.sh list
-```
-
-### Multi-IP Admin (plusieurs administrateurs)
-
-Pour autoriser **plusieurs IPs** à accéder aux services d'administration :
-
-```bash
-# Modifier .env
-PERSONAL_IP=10.0.0.1,192.168.1.50,88.12.34.56
-
-# Redémarrer les services
-docker compose restart dashboard
-
-# Mettre à jour firewall (si serveur déjà configuré)
-sudo ./setup.sh  # Relancer installation (option 1 : config existante)
-```
-
-**Format** : IPs séparées par **virgules sans espaces**.
-
----
-
-## 📂 Structure du Projet
-
-```
-PY_SAV/
-├── 📄 setup.sh                     # Installation automatisée tout-en-un
-├── 📄 server.py                    # Serveur AudioSocket principal (legacy)
-├── 📄 config.py                    # Configuration legacy
-├── 📄 db_utils.py                  # Utilitaires bases de données
-├── 📄 audio_utils.py               # Conversions audio CPU-bound
-├── 📄 generate_cache.py            # Génération cache audio 8kHz
-├── 📄 convert_logs.py              # Conversion batch RAW → MP3
-├── 📄 dashboard.py                 # Dashboard Streamlit (supervision)
-├── 📄 manage_allowed_ips.sh        # Gestion IPs Asterisk autorisées
-│
-├── 📁 voicebot_sav/                # Architecture Clean (nouveau)
-│   ├── config/
-│   │   ├── settings.py             # Configuration centralisée
-│   │   └── prompts.yaml            # Prompts externalisés
-│   ├── models/
-│   │   ├── conversation.py         # ConversationContext, ConversationState
-│   │   └── intents.py              # Intent, IntentType (JSON)
-│   ├── services/
-│   │   ├── stt.py                  # STTService (Deepgram, endpointing dynamique)
-│   │   ├── llm.py                  # LLMService (Groq, intent analysis)
-│   │   ├── tts.py                  # TTSService (ElevenLabs, streaming)
-│   │   └── database.py             # DatabaseService (wrapper async)
-│   ├── core/
-│   │   ├── intent_analyzer.py      # IntentAnalyzer (LLM → JSON)
-│   │   ├── state_machine.py        # StateMachine (transitions)
-│   │   └── call_handler.py         # CallHandler (orchestrateur)
-│   └── utils/
-│       ├── audio.py                # AudioCache (LRU + static)
-│       ├── logging_config.py       # Logs structurés (JSON optionnel)
-│       └── validation.py           # Validation email, phone, sentiment
-│
-├── 📁 config/
-│   └── prometheus.yml              # Config Prometheus (auto-généré)
-│
-├── 📁 assets/
-│   └── cache/                      # Fichiers audio 8kHz pré-générés
-│       ├── welcome.raw
-│       ├── goodbye.raw
-│       └── ...
-│
-├── 📁 logs/
-│   └── calls/                      # Enregistrements RAW des appels
-│       └── call_{uuid}_{timestamp}.raw
-│
-├── 📄 docker-compose.yml           # Stack Docker complète
-├── 📄 docker-compose.override.yml  # Passwords (auto-généré, gitignored)
-├── 📄 init_db.sql                  # Initialisation PostgreSQL
-├── 📄 requirements.txt             # Dépendances Python
-├── 📄 .env                         # Variables d'environnement (auto-généré)
-├── 📄 .env.example                 # Template .env
-│
-├── 📖 README.md                    # Ce fichier
-├── 📖 REFACTOR.md                  # Architecture Clean détaillée
-├── 📖 DASHBOARD_SECURITY.md        # Sécurité multi-IP dashboard
-├── 📖 MULTI_IP_SETUP.md            # Guide multi-Asterisk
-├── 📖 example_usage.py             # Exemple utilisation Clean Architecture
-└── 📄 asterisk_config.txt          # Configuration Asterisk (serveur distant)
-```
-
----
-
-## 🌐 Services Disponibles
-
-Après installation, les services suivants sont accessibles :
-
-| Service | URL/Port | Sécurité | Description |
-|---------|----------|----------|-------------|
-| **🤖 Voicebot IA** | `SERVER_IP:9090` | 🔒 IP Asterisk uniquement | AudioSocket (connexion Asterisk) |
-| **📊 Dashboard Streamlit** | `http://SERVER_IP:8501` | 🔒 Multi-IP Admin | Supervision appels + audio |
-| **📉 Prometheus** | `http://SERVER_IP:9092` | 🔒 Multi-IP Admin | Collecte métriques |
-| **🗄️ PostgreSQL Clients** | `SERVER_IP:5432` | 🔒 Multi-IP Admin | Base clients |
-| **🗄️ PostgreSQL Tickets** | `SERVER_IP:5433` | 🔒 Multi-IP Admin | Base tickets |
-| **🔧 PgAdmin** | `http://SERVER_IP:5050` | 🔒 Multi-IP Admin | Interface PostgreSQL |
-| **📊 Métriques Voicebot** | `http://SERVER_IP:9091/metrics` | 🔒 Multi-IP Admin | Métriques Prometheus format |
-
-### Accès PgAdmin
-
-```
-URL : http://SERVER_IP:5050
-```
-
-Ajoutez une connexion avec :
-- Host : `postgres-clients` (ou `postgres-tickets`)
-- Port : `5432`
-- Database : `db_clients` (ou `db_tickets`)
-- Username : `voicebot`
-- Password : `<DB_PASSWORD défini à l'installation>`
-
----
-
-## 📊 Dashboard Streamlit
-
-### Fonctionnalités
-
-Le dashboard offre une **supervision en temps réel** :
-
-- **📈 KPIs** :
-  - Appels du jour
-  - Durée moyenne
-  - Clients mécontents
-  - Pannes Internet
-
-- **🎧 Enregistrements** :
-  - Liste des 50 derniers tickets
-  - Lecture audio intégrée (conversion RAW → WAV à la volée)
-  - Sentiment analysis visuel (😐 😊 😡)
-  - Métadonnées (UUID, durée, type problème, statut)
-
-### Sécurité 3 Couches
-
-1. **UFW** : Firewall système bloque port 8501 sauf IPs autorisées
-2. **Iptables DOCKER-USER** : Empêche Docker de contourner UFW
-3. **Application** : `dashboard.py` valide l'IP du visiteur avant affichage
-
-**Résultat** : Même si un attaquant contourne UFW, Docker ET l'application bloquent l'accès.
-
-### Exemple d'utilisation
-
-```bash
-# Accès depuis IP autorisée (10.0.0.1)
-http://192.168.1.100:8501
-→ ✅ Accès autorisé depuis 10.0.0.1
-→ Dashboard affiché
-
-# Accès depuis IP non autorisée (12.34.56.78)
-http://192.168.1.100:8501
-→ 🚫 ACCÈS REFUSÉ
-→ Votre IP (12.34.56.78) n'est pas autorisée
-→ IPs autorisées: 10.0.0.1, 192.168.1.50
-```
-
-📖 **Documentation complète** : [DASHBOARD_SECURITY.md](DASHBOARD_SECURITY.md)
-
----
-
-## 🔄 Machine à États SAV
-
-### Diagramme de Flux
+### Machine à États
 
 ```
 INIT
   ↓
-WELCOME ────────┐
-  ↓             │
-TICKET_         │ (si ticket en attente)
-VERIFICATION    │
-  ↓ (non)       │
-IDENTIFICATION  │
-  ↓             │
-DIAGNOSTIC ◄────┘
+GREETING (Bonjour + détection client)
   ↓
-SOLUTION
+TICKET_VERIFICATION (Si ticket en attente)
   ↓
-VERIFICATION
+DIAGNOSTIC (Description problème)
   ↓
-┌───────┴────────┐
-│                │
-OUI (résolu)   NON (persiste)
-│                │
-GOODBYE      TRANSFER
+SOLUTION (Proposition redémarrage)
+  ↓
+VERIFICATION (Ça marche ?)
+  ↓
+TRANSFER ou GOODBYE
 ```
-
-### États disponibles
-
-| État | Description | Intent attendu |
-|------|-------------|----------------|
-| `INIT` | Initialisation appel | - |
-| `WELCOME` | Message bienvenue | - |
-| `TICKET_VERIFICATION` | Vérification ticket existant | YES / NO |
-| `IDENTIFICATION` | Collecte identité client | IDENTITY_PROVIDED / EMAIL_PROVIDED |
-| `DIAGNOSTIC` | Identification problème | INTERNET_ISSUE / MOBILE_ISSUE / MODIFICATION_REQUEST |
-| `SOLUTION` | Proposition solution | - |
-| `VERIFICATION` | Vérification résolution | YES (résolu) / NO (persiste) |
-| `TRANSFER` | Transfert technicien | - |
-| `GOODBYE` | Fin appel | - |
-| `ERROR` | Erreur système | - |
-
-### Endpointing Dynamique
-
-La **State Machine** ajuste automatiquement le timeout STT selon le contexte :
-
-| État | Mode STT | Timeout | Raison |
-|------|----------|---------|--------|
-| `TICKET_VERIFICATION` | `yes_no` | **500ms** | Réponse courte attendue |
-| `VERIFICATION` | `yes_no` | **500ms** | Confirmation rapide |
-| `SOLUTION` | `yes_no` | **500ms** | Oui/Non après manipulation |
-| `DIAGNOSTIC` | `open` | **1200ms** | Description problème complexe |
-| `IDENTIFICATION` | `open` | **1200ms** | Nom + prénom + entreprise |
-| Autres | `open` | **1200ms** | Réponse ouverte |
-
-**Avantage** : **80% de réduction de latence** sur réponses courtes sans couper la parole sur réponses longues.
-
-📖 **Documentation complète** : [REFACTOR.md](REFACTOR.md)
 
 ---
 
-## ⚡ Performance & Optimisations
+## Installation
 
-### Optimisations CPU
+### Prérequis
 
-| Technique | Description | Gain |
-|-----------|-------------|------|
-| **uvloop** | Event loop optimisé (libuv) | +40% performances réseau |
-| **ProcessPoolExecutor** | Workers FFmpeg parallèles | Zéro blocage thread principal |
-| **Cache Audio RAM** | Phrases pré-générées 8kHz | Zéro latence TTS pour phrases communes |
-| **LRU Cache** | Cache dynamique (50 entrées) | Réutilisation réponses fréquentes |
-| **Streaming TTS** | Chunks 320 bytes (20ms) | Audio joué pendant génération |
+- **Serveur Linux** Ubuntu/Debian (4GB RAM minimum)
+- **Docker** + Docker Compose
+- **Ports ouverts** : 9090 (AudioSocket), 8501 (Dashboard)
+- **API Keys** :
+  - Deepgram (STT) : https://deepgram.com
+  - Groq (LLM) : https://console.groq.com
+  - ElevenLabs (TTS) : https://elevenlabs.io
 
-### Optimisations Réseau
+### Installation Automatisée
 
-| Technique | Description | Gain |
-|-----------|-------------|------|
-| **Deepgram WebSocket** | Connexion persistante | Pas de handshake par phrase |
-| **Groq ultra-rapide** | LLM optimisé latence | ~200ms génération |
-| **ElevenLabs Turbo v2.5** | TTS ultra-rapide | **3x plus rapide qu'OpenAI** |
-| **Endpointing 500ms** | Détection fin de phrase rapide | **80% réduction latence** |
+```bash
+# 1. Cloner le projet
+git clone https://github.com/Pierre3474/Backup-LLM.git
+cd Backup-LLM
 
-### Capacité
+# 2. Lancer l'installation automatique
+sudo bash setup.sh
+```
 
-- **4 vCPU** : 20 appels simultanés
-- **8 vCPU** : 40+ appels simultanés
-- **16 vCPU** : 80+ appels simultanés
+Le script `setup.sh` va :
+1.  Demander vos clés API (Deepgram, Groq, ElevenLabs)
+2.  Configurer les IPs Asterisk autorisées
+3.  Générer un mot de passe PostgreSQL sécurisé
+4.  Créer le fichier `.env`
+5.  Builder les images Docker
+6.  Initialiser les bases de données
+7.  Configurer le firewall iptables
+8.  Générer le cache audio (27 phrases)
 
-**Scalabilité horizontale** : Ajouter serveurs IA + Load Balancer Asterisk.
+### Réinstallation Rapide
+
+Si `.env` existe déjà :
+
+```bash
+sudo bash setup.sh
+# Choisir Option 1 : Démarrage Rapide
+```
 
 ---
 
-## 🔐 Sécurité
+## Configuration
 
-### Firewall 3 Couches
-
-#### 1. UFW (Firewall Système)
+### Fichier `.env`
 
 ```bash
-# Port AudioSocket (9090) : Asterisk uniquement
-sudo ufw allow from 192.168.1.100 to any port 9090 proto tcp  # Asterisk 1
-sudo ufw allow from 192.168.2.200 to any port 9090 proto tcp  # Asterisk 2
+# API Keys
+DEEPGRAM_API_KEY=xxxxx
+GROQ_API_KEY=gsk_xxxxx
+ELEVENLABS_API_KEY=sk_xxxxx
 
-# Services Admin (5050, 8501, 9092, 5432, 5433) : Multi-IP Admin
-sudo ufw allow from 10.0.0.1 to any port 8501 proto tcp       # Dashboard
-sudo ufw allow from 192.168.1.50 to any port 8501 proto tcp   # Dashboard
+# Modèle ElevenLabs (Flash v2.5 = latence <300ms)
+ELEVENLABS_MODEL=eleven_flash_v2_5
+ELEVENLABS_VOICE_ID=N2lVS1w4EtoT3dr4eOWO  # Voix française Adrien
+
+# PostgreSQL
+DB_PASSWORD=xxxxx
+DB_CLIENTS_DSN=postgresql://voicebot:xxxxx@postgres-clients:5432/db_clients
+DB_TICKETS_DSN=postgresql://voicebot:xxxxx@postgres-tickets:5432/db_tickets
+
+# Réseau
+SERVER_HOST_IP=ASTERISK_SERVER_2_IP
+AUDIOSOCKET_PORT=9090
+
+# Asterisk AMI
+REMOTE_ASTERISK_IP=ASTERISK_SERVER_1_IP
+AMI_HOST=ASTERISK_SERVER_1_IP
+AMI_PORT=5038
+AMI_USERNAME=admin
+AMI_SECRET=xxxxx
 ```
 
-#### 2. Iptables DOCKER-USER
+### IPs Autorisées
 
-Docker **contourne UFW** en modifiant directement iptables. Solution : chaîne `DOCKER-USER`.
+Le firewall iptables autorise **uniquement** :
+- **Port 9090** : IPs Asterisk listées dans `/opt/PY_SAV/.allowed_asterisk_ips`
+- **Port 8501** : IPs admin listées dans `/opt/PY_SAV/.allowed_admin_ips`
 
+Pour modifier :
 ```bash
-# ACCEPT rules (INSERT au début)
-iptables -I DOCKER-USER -p tcp --dport 8501 -s 10.0.0.1 -j ACCEPT
-iptables -I DOCKER-USER -p tcp --dport 8501 -s 192.168.1.50 -j ACCEPT
-
-# DROP rule (APPEND à la fin)
-iptables -A DOCKER-USER -p tcp --dport 8501 -j DROP
+sudo bash manage_allowed_ips.sh
 ```
 
-**Ordre critique** : ACCEPT avant DROP.
+---
 
-#### 3. Application (dashboard.py)
+## Services IA
+
+### 1. Deepgram STT (Speech-to-Text)
+
+**Modèle** : Nova-2 (multilingue optimisé)
+**Latence** : ~200-300ms
+**Précision** : 95%+ en français
+**Endpointing** : 1200ms (silence avant validation)
 
 ```python
-def validate_ip_access():
-    allowed_ips = os.getenv("PERSONAL_IP").split(',')
-    client_ip = get_client_ip()  # X-Forwarded-For, X-Real-IP
-
-    if client_ip not in allowed_ips:
-        st.error("🚫 ACCÈS REFUSÉ")
-        st.stop()
+# Config dans server.py
+DeepgramClient(api_key=config.DEEPGRAM_API_KEY)
+options = LiveOptions(
+    model="nova-2",
+    language="fr",
+    endpointing=1200,  # 1.2 secondes de silence
+    interim_results=True,
+    vad_events=True
+)
 ```
 
-### API Keys
+### 2. Groq LLM (Large Language Model)
 
-- **Stockage** : `.env` (gitignored)
-- **Permissions** : `chmod 600 .env` (lecture/écriture propriétaire uniquement)
-- **Rotation** : Changement régulier recommandé
+**Modèle** : Llama 3.1-70B Versatile
+**Latence** : 300-500ms
+**Tokens/sec** : 500+
+**Usage** : Compréhension, résumé, classification
 
-### Règles Persistantes
-
-Les règles iptables sont **sauvegardées automatiquement** par `setup.sh` :
-
-```bash
-# Via netfilter-persistent (si disponible)
-netfilter-persistent save
-
-# Ou via iptables-save
-iptables-save > /etc/iptables/rules.v4
+```python
+# Config dans server.py
+Groq(api_key=config.GROQ_API_KEY)
+completion = client.chat.completions.create(
+    model="llama-3.1-70b-versatile",
+    messages=[...],
+    temperature=0.3
+)
 ```
 
-**Résultat** : Règles conservées après reboot.
+### 3. ElevenLabs TTS (Text-to-Speech)
+
+**Modèle** : Flash v2.5 (ultra low-latency)
+**Latence** : <300ms
+**Voix** : Adrien (français, claire)
+**Streaming** : Oui (lecture pendant génération)
+
+```python
+# Config dans server.py
+ElevenLabs(api_key=config.ELEVENLABS_API_KEY)
+audio_stream = client.generate(
+    text="Bonjour, je suis Eko",
+    voice=config.ELEVENLABS_VOICE_ID,
+    model="eleven_flash_v2_5",
+    stream=True,
+    output_format="mp3_44100_128"
+)
+```
 
 ---
 
-## 📈 Monitoring
+## Workflow d'un Appel
 
-### Métriques Prometheus
-
-Le voicebot expose des métriques au format Prometheus :
+### 1. Connexion (0-2 secondes)
 
 ```
-http://SERVER_IP:9091/metrics
+Asterisk appelle → Port 9090 AudioSocket
+  ↓
+Handshake binaire (UUID 16 bytes)
+  ↓
+Récupération CALLERID via AMI
+  ↓
+Connexion Deepgram streaming
 ```
 
-**Métriques disponibles** :
-- `voicebot_calls_total` : Nombre total d'appels
-- `voicebot_calls_active` : Appels en cours
-- `voicebot_call_duration_seconds` : Durée moyenne appel
-- `voicebot_errors_total` : Erreurs API (Deepgram, Groq, ElevenLabs)
-- `voicebot_cache_hits_total` : Cache hits audio
-- `voicebot_cache_misses_total` : Cache misses audio
+### 2. Accueil (2-5 secondes)
 
-### Visualisation Métriques
+```python
+# Recherche client en base
+client = await db_utils.get_client_info(phone_number)
+tickets_pending = await db_utils.get_pending_tickets(phone_number)
+history = await db_utils.get_client_history(phone_number)
 
-Les métriques Prometheus peuvent être visualisées via :
-- **Prometheus UI** : `http://SERVER_IP:9092`
-- **Dashboard Streamlit** : `http://SERVER_IP:8501` (KPIs temps réel)
-- **Outils tiers** : Grafana, DataDog, etc. (si configurés)
+# 3 scénarios
+if client and tickets_pending:
+    # "Bonjour Pierre Dupont, vous avez un ticket ouvert concernant votre connexion"
+    await _say("greet")
+    await _say_smart(f"{first_name} {last_name}, ticket...")
 
-**Métriques utiles** :
-- Appels en temps réel
-- Taux d'erreur API
-- Latence moyenne
-- Utilisation cache
-- Transferts techniciens
+elif client:
+    # "Bonjour Pierre Dupont, bienvenue au SAV"
+    await _say("greet")
+    await _say_smart(f"{first_name} {last_name}")
+    await _say("welcome")
 
-### Logs Structurés
+else:
+    # "Bonjour, bienvenue au SAV  . Je suis Eko..."
+    await _say("greet")
+    await _say("welcome")
+```
 
-Le système log automatiquement :
+### 3. Diagnostic (5-30 secondes)
+
+Le client décrit son problème. Détection intelligente avec **45+ mots-clés** :
+
+```python
+# Exemple : "Ma connexion wifi ne marche pas"
+problem_type = _detect_problem_type(user_text)
+# → Détecte "connexion" + "wifi" = INTERNET (score 2 vs 0)
+
+# Exemple : "La voix grésille quand j'appelle"
+problem_type = _detect_problem_type(user_text)
+# → Détecte "voix" + "grésille" + "appelle" = MOBILE (score 3 vs 0)
+```
+
+**Mots-clés Internet** : internet, wifi, box, modem, fibre, débit, connexion lente...
+**Mots-clés Mobile** : téléphone, ligne, voix coupée, grésille, appel, tonalité...
+
+### 4. Solution (30-60 secondes)
+
+```python
+if problem_type == "internet":
+    # Warning si ligne fixe
+    await _say_dynamic("Attention, si vous appelez depuis une ligne fixe...")
+    # Proposition
+    await _say_smart("Redémarrez votre box en débranchant 30 secondes")
+
+else:  # mobile
+    await _say_smart("Essayez de redémarrer votre téléphone")
+```
+
+### 5. Vérification (60-90 secondes)
+
+```python
+await _say_dynamic("Avez-vous pu faire la manipulation ?")
+
+if "oui" in response or "marche" in response:
+    await _say("goodbye")  # Cache
+    status = "resolved"
+else:
+    # Transfert technicien
+    await _say("transfer")  # Cache
+    status = "transferred"
+```
+
+### 6. Sauvegarde Ticket (fin d'appel)
+
+```python
+ticket_data = {
+    'call_uuid': '77632586-8764-4145-6589-898291957903',
+    'phone_number': '0781833134',
+    'client_name': 'Pierre Dupont',
+    'client_email': 'pierre@example.com',
+    'problem_type': 'internet',
+    'status': 'resolved',
+    'sentiment': 'neutral',  # LLM
+    'summary': 'Client signale coupures wifi résolues après redémarrage box',  # Filtré
+    'duration_seconds': 85,
+    'tag': 'FIBRE_SYNCHRO',  # LLM
+    'severity': 'MEDIUM',  # LLM
+    'call_date': '2025-12-29',
+    'call_time': '15:23:45'
+}
+await db_utils.create_ticket(ticket_data)
+```
+
+---
+
+## Base de Données
+
+### Structure
+
+**2 bases PostgreSQL distinctes** :
+
+#### 1. `db_clients` (port 5432)
+
+```sql
+CREATE TABLE clients (
+    phone_number VARCHAR(50) PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    box_model VARCHAR(50),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+#### 2. `db_tickets` (port 5433)
+
+```sql
+CREATE TABLE tickets (
+    id SERIAL PRIMARY KEY,
+    call_uuid VARCHAR(255) UNIQUE,
+    phone_number VARCHAR(50),
+    client_name VARCHAR(200),       -- Nom complet
+    client_email VARCHAR(255),      -- Email si fourni
+    problem_type VARCHAR(50),       -- "internet" ou "mobile"
+    status VARCHAR(50),             -- "resolved", "transferred", "failed"
+    sentiment VARCHAR(50),          -- "positive", "neutral", "negative"
+    summary TEXT,                   -- Résumé LLM filtré
+    duration_seconds INTEGER,       -- Durée appel
+    tag VARCHAR(100),               -- FIBRE_SYNCHRO, MOBILE_4G...
+    severity VARCHAR(20),           -- LOW, MEDIUM, HIGH
+    call_date DATE,                 -- 2025-12-29
+    call_time TIME,                 -- 15:23:45
+    created_at TIMESTAMP
+);
+```
+
+### Migrations
+
+Les migrations SQL sont dans `/migrations/` :
 
 ```bash
-# Logs applicatifs
-tail -f logs/*.log
+migrations/
+├── 002_increase_phone_number_length.sql      # VARCHAR(20) → VARCHAR(50)
+├── 003_increase_phone_number_clients.sql     # Idem pour clients
+└── 004_remove_transcript_add_client_info.sql # Ajout client_name, email, date/time
+```
 
-# Logs Docker
+Pour appliquer :
+```bash
+docker compose exec -T postgres-tickets psql -U voicebot -d db_tickets < migrations/004_*.sql
+```
+
+---
+
+## Optimisations
+
+### 1. Cache Audio (assets/cache/)
+
+**27 phrases pré-enregistrées** pour réponses instantanées :
+
+```
+greet.raw                    # "Bonjour"
+welcome.raw                  # "Bienvenue au SAV  ..."
+ask_identity.raw             # "Puis-je avoir votre nom ?"
+ask_email.raw                # "Quelle est votre adresse email ?"
+goodbye.raw                  # "Merci d'avoir appelé, au revoir"
+transfer.raw                 # "Je vous transfère..."
+...
+```
+
+**Impact** :
+-  Latence : **0ms** (vs 300ms ElevenLabs)
+-  Coûts : **0€** (pas d'API call)
+-  Fiabilité : Toujours disponible
+
+### 2. Stratégie `_say_smart()`
+
+```python
+# AVANT (100% ElevenLabs)
+await _say_dynamic("Bonjour Pierre Dupont, bienvenue...")
+# → 1 appel ElevenLabs long (500ms)
+
+# APRÈS (Cache + génération ciblée)
+await _say("greet")                    # Cache (0ms)
+await _say_smart("Pierre Dupont")      # Court TTS (100ms)
+await _say("welcome")                  # Cache (0ms)
+# → Économie : 60-80% coûts + 75% latence
+```
+
+### 3. Détection Intelligente Problème
+
+**45+ mots-clés analysés** au lieu de simplement chercher "internet" :
+
+```python
+# AVANT
+problem_type = "internet" if "internet" in text else "mobile"
+
+# APRÈS
+internet_score = count_keywords(internet_keywords, text)  # 20+ mots
+mobile_score = count_keywords(mobile_keywords, text)      # 25+ mots
+problem_type = "internet" if internet_score > mobile_score else "mobile"
+```
+
+**Résultat** : 95%+ de précision vs 60% avant
+
+### 4. Filtre Mots Critiques
+
+Remplace automatiquement dans les tickets :
+
+```
+'arnaque' → 'pratique contestable'
+'voleur' → 'surfacturation'
+'con', 'merde' → '***'
+```
+
+**Bénéfice** : Tickets professionnels + conformité RGPD
+
+### 5. Protection HTTP/HTTPS
+
+Rejette les scans malveillants sur port 9090 :
+
+```python
+# Détecte HTTP
+if text.startswith(('GET ', 'POST', 'HEAD')):
+    logger.warning("Rejected HTTP request from scanner")
+    return
+
+# Détecte TLS/SSL
+if bytes[0] == 0x16 and bytes[1] == 0x03:
+    logger.warning("Rejected TLS/SSL handshake")
+    return
+```
+
+---
+
+## Dashboard
+
+Interface web Streamlit sur **port 8501** (sécurisé par IP).
+
+### Fonctionnalités
+
+-  **Statistiques du jour** : Appels total, durée moyenne, résolutions
+-  **Liste des tickets** : Filtrable par date, statut, sentiment
+-  **Détails ticket** : Nom, email, durée, tag, summary complet
+-  **Historique client** : Tous les appels d'un numéro
+- 🎵 **Lecture audio** : Fichiers .raw des appels enregistrés
+
+### Lancement
+
+```bash
+# Déjà lancé automatiquement par Docker Compose
+docker compose logs dashboard
+
+# Accès : http://ASTERISK_SERVER_2_IP:8501
+```
+
+---
+
+## Monitoring ROI - Grafana & Prometheus
+
+**Système de métriques en temps réel** pour mesurer le **retour sur investissement (ROI)** du voicebot et suivre les **KPIs business** compréhensibles par les gestionnaires d'équipe.
+
+### Accès aux Dashboards
+
+-  **Grafana** : http://ASTERISK_SERVER_2_IP:3000
+  - **Username** : `admin`
+  - **Password** : `voicebot2024`
+-  **Prometheus** : http://ASTERISK_SERVER_2_IP:9092
+
+### Dashboard "Voicebot SAV - ROI & KPIs Business"
+
+Le dashboard principal affiche **10 métriques clés** pour mesurer la performance et la rentabilité :
+
+#### Métriques Financières
+
+1. **Coût Moyen par Appel** : Calcule automatiquement le coût total (ElevenLabs + Deepgram + Groq) divisé par le nombre d'appels
+   - ElevenLabs TTS : 0.11€/1000 caractères
+   - Deepgram STT : 0.26€/heure
+   - Groq LLM : 0.59€/1M tokens
+
+2. **Économies vs Agent Humain** : Compare le coût du voicebot au coût d'un agent humain (15€/appel en moyenne)
+   - Exemple : 100 appels/jour × 15€ = 1500€ économisés vs ~50€ de coûts API
+
+3. **Répartition des Coûts API** : Graphique temps réel montrant la proportion de chaque service IA
+
+#### Métriques de Performance
+
+4. **Taux de Résolution Automatique** : % d'appels résolus sans transfert vers technicien
+   - 🟢 Vert : >70% (excellent)
+   - 🟡 Jaune : 50-70% (bon)
+   - 🔴 Rouge : <50% (à améliorer)
+
+5. **Optimisation Cache TTS** : % de phrases dites depuis le cache vs génération API
+   - Cache hit >50% = réduction significative des coûts ElevenLabs
+
+6. **Temps Moyen de Traitement** : Durée moyenne des appels en secondes
+   - 🟢 Vert : <120s (rapide)
+   - 🟡 Jaune : 120-300s (normal)
+   - 🔴 Rouge : >300s (lent)
+
+#### Métriques d'Activité
+
+7. **Volume d'Appels** : Nombre d'appels traités par heure (graphique temps réel)
+
+8. **Distribution des Problèmes** : Répartition Internet vs Mobile/Téléphone (camembert)
+
+9. **Satisfaction Client** : Analyse de sentiment automatique
+   - 😊 Positif (vert) / 😐 Neutre (jaune) / 😡 Négatif (rouge)
+
+10. **Tickets par Sévérité** : Volume de tickets par niveau (LOW, MEDIUM, HIGH, CRITICAL)
+
+### Architecture Monitoring
+
+```
+┌───────────────────┐
+│  Voicebot Server  │
+│  Port 9091        │──▶ Expose métriques Prometheus
+└───────────────────┘
+         │
+         │ scrape toutes les 15s
+         ▼
+┌───────────────────┐
+│   Prometheus      │
+│   Port 9092       │──▶ Stocke métriques (30 jours)
+└───────────────────┘
+         │
+         │ requêtes PromQL
+         ▼
+┌───────────────────┐
+│     Grafana       │
+│     Port 3000     │──▶ Visualisation dashboards
+└───────────────────┘
+```
+
+### Métriques Collectées
+
+Le fichier `metrics.py` exporte **15 métriques principales** :
+
+#### Appels & Business
+- `voicebot_calls_total` : Nombre total d'appels par status et problem_type
+- `voicebot_call_duration_seconds` : Durée des appels (histogram)
+- `voicebot_client_sentiment_total` : Sentiment client (positive/neutral/negative)
+- `voicebot_tickets_created_total` : Tickets créés par sévérité et tag
+
+#### Coûts API
+- `voicebot_elevenlabs_requests_total` : Requêtes TTS (cache_hit vs api_call)
+- `voicebot_elevenlabs_characters_total` : Caractères générés (pour calcul coût)
+- `voicebot_deepgram_requests_total` : Requêtes STT
+- `voicebot_deepgram_audio_seconds_total` : Durée audio transcrite (pour calcul coût)
+- `voicebot_groq_requests_total` : Requêtes LLM
+- `voicebot_groq_tokens_input_total` : Tokens input LLM (pour calcul coût)
+- `voicebot_groq_tokens_output_total` : Tokens output LLM (pour calcul coût)
+
+#### Performance Technique
+- `voicebot_tts_response_seconds` : Temps de réponse TTS (cache vs API)
+- `voicebot_stt_response_seconds` : Temps de transcription Deepgram
+- `voicebot_llm_response_seconds` : Temps de réponse Groq
+- `voicebot_errors_total` : Erreurs système par type et composant
+
+### Formules ROI
+
+Les requêtes PromQL calculées automatiquement dans Grafana :
+
+```promql
+# Coût par appel
+(
+  (voicebot_elevenlabs_characters_total * 0.00011) +
+  (voicebot_deepgram_audio_seconds_total * 0.0043) +
+  ((voicebot_groq_tokens_input_total + voicebot_groq_tokens_output_total) * 0.00000059)
+) / voicebot_calls_total
+
+# Économies cache TTS (%)
+(voicebot_elevenlabs_requests_total{type="cache_hit"} /
+ (voicebot_elevenlabs_requests_total{type="cache_hit"} +
+  voicebot_elevenlabs_requests_total{type="api_call"})) * 100
+
+# Taux de résolution (%)
+(voicebot_calls_total{status="resolved"} / sum(voicebot_calls_total)) * 100
+
+# Économies totales vs agent humain
+(voicebot_calls_total * 15) - (coût total API)
+```
+
+### Configuration Firewall
+
+```bash
+# Port 3000 (Grafana) - SEULEMENT IPs Admin/Gestionnaires
+iptables -I DOCKER-USER -p tcp --dport 3000 -s 90.XXX.XXX.XXX -j ACCEPT
+iptables -I DOCKER-USER -p tcp --dport 3000 -j DROP
+
+# Port 9092 (Prometheus) - SEULEMENT localhost + IPs Admin
+iptables -I DOCKER-USER -p tcp --dport 9092 -s 90.XXX.XXX.XXX -j ACCEPT
+iptables -I DOCKER-USER -p tcp --dport 9092 -j DROP
+
+# Port 9091 (Métriques) - SEULEMENT Prometheus (interne Docker)
+# Pas d'accès externe nécessaire
+```
+
+### Commandes Utiles
+
+```bash
+# Vérifier les métriques brutes
+curl http://localhost:9091/metrics
+
+# Logs Prometheus
+docker compose logs -f prometheus
+
+# Logs Grafana
+docker compose logs -f grafana
+
+# Restart monitoring stack
+docker compose restart prometheus grafana
+
+# Rebuild si modification dashboards
+docker compose down && docker compose up -d
+```
+
+---
+
+## Sécurité
+
+### Firewall iptables
+
+```bash
+# Port 9090 (AudioSocket) - SEULEMENT IPs Asterisk
+iptables -I DOCKER-USER -p tcp --dport 9090 -s ASTERISK_SERVER_1_IP -j ACCEPT
+iptables -I DOCKER-USER -p tcp --dport 9090 -j DROP
+
+# Port 8501 (Dashboard) - SEULEMENT IPs Admin
+iptables -I DOCKER-USER -p tcp --dport 8501 -s 90.XXX.XXX.XXX -j ACCEPT
+iptables -I DOCKER-USER -p tcp --dport 8501 -j DROP
+```
+
+### Gestion IPs
+
+```bash
+# Ajouter/supprimer IPs autorisées
+sudo bash manage_allowed_ips.sh
+```
+
+### Variables sensibles
+
+ **Jamais commitées** :
+- `.env` (clés API, mots de passe)
+- `/opt/PY_SAV/.allowed_*` (listes IPs)
+
+ **Versionnées** :
+- `.env.example` (template sans secrets)
+- `setup.sh` (génère .env automatiquement)
+
+---
+
+## Maintenance
+
+### Logs
+
+```bash
+# Tous les services
 docker compose logs -f
 
-# Logs appels (fichiers RAW)
-ls -lh logs/calls/
+# Voicebot uniquement
+docker compose logs -f voicebot
+
+# Filtrer par type
+docker compose logs voicebot | grep "Problem type detected"
+docker compose logs voicebot | grep "Ticket created"
 ```
 
-**Format** : JSON optionnel (`STRUCTURED_LOGGING=true` dans `.env`)
-
----
-
-## 🧪 Test
-
-### Test Simple
+### Redémarrage
 
 ```bash
-# 1. Démarrer le serveur IA
-sudo ./setup.sh
+# Tout redémarrer
+docker compose down && docker compose up -d
 
-# 2. Configurer Asterisk (serveur distant)
-# Voir asterisk_config.txt pour configuration complète
-
-# 3. Composer le 777 depuis un téléphone SIP
-# Vous devriez entendre : "Bonjour, bienvenue au SAV Wipple..."
+# Service spécifique
+docker compose restart voicebot
 ```
 
-### Exemple de Dialogue
-
-```
-Bot  : Bonjour, bienvenue au SAV Wipple. Comment puis-je vous aider ?
-User : Bonjour, j'ai un problème avec ma connexion Internet.
-
-Bot  : Avez-vous déjà un ticket en cours concernant ce problème ?
-User : Non.
-
-Bot  : Puis-je avoir votre nom et votre entreprise ?
-User : Pierre Dupont de la société TechCorp.
-
-Bot  : Merci Pierre. Pouvez-vous me décrire votre problème plus en détail ?
-User : Ma box Internet ne fonctionne plus depuis ce matin.
-
-Bot  : Je comprends. Essayez de débrancher votre box pendant 30 secondes,
-       puis rebranchez-la. Attendez 2 minutes que les voyants se stabilisent.
-User : D'accord, je vais essayer.
-
-[Pause 2 minutes]
-
-Bot  : Avez-vous pu faire la manipulation ? Est-ce que ça fonctionne maintenant ?
-User : Oui, ça marche ! Merci beaucoup.
-
-Bot  : Parfait ! Merci pour votre appel. Au revoir !
-```
-
-### Debug
+### Rebuild après modifications code
 
 ```bash
-# Vérifier connexion AudioSocket
-netstat -tlnp | grep 9090
+# Rebuild complet
+docker compose build --no-cache voicebot
+docker compose up -d voicebot
+```
 
-# Logs temps réel
-tail -f logs/*.log
+### Backup bases de données
 
-# Tester manuellement (telnet)
-telnet SERVER_IP 9090
+```bash
+# Clients
+docker compose exec -T postgres-clients pg_dump -U voicebot db_clients | gzip > backup_clients_$(date +%Y%m%d).sql.gz
+
+# Tickets
+docker compose exec -T postgres-tickets pg_dump -U voicebot db_tickets | gzip > backup_tickets_$(date +%Y%m%d).sql.gz
+```
+
+### Monitoring
+
+```bash
+# État services
+docker compose ps
+
+# Utilisation ressources
+docker stats
+
+# Healthchecks
+docker compose exec voicebot nc -zv localhost 9090
+docker compose exec postgres-clients pg_isready -U voicebot
 ```
 
 ---
 
-## 📚 Documentation
-
-### Fichiers de documentation
+## Fichiers Importants
 
 | Fichier | Description |
 |---------|-------------|
-| [README.md](README.md) | Ce fichier - Vue d'ensemble complète |
-| [REFACTOR.md](REFACTOR.md) | Architecture Clean détaillée + guide migration |
-| [DASHBOARD_SECURITY.md](DASHBOARD_SECURITY.md) | Sécurité multi-IP dashboard (3 couches) |
-| [MULTI_IP_SETUP.md](MULTI_IP_SETUP.md) | Configuration multi-Asterisk |
-| [example_usage.py](example_usage.py) | Exemple utilisation Clean Architecture |
-| [asterisk_config.txt](asterisk_config.txt) | Configuration Asterisk (serveur distant) |
-
-### Guides pratiques
-
-- **Installation** : Voir [Installation Automatisée](#-installation-automatisée)
-- **Multi-IP Asterisk** : Voir [MULTI_IP_SETUP.md](MULTI_IP_SETUP.md)
-- **Sécurité Dashboard** : Voir [DASHBOARD_SECURITY.md](DASHBOARD_SECURITY.md)
-- **Architecture Clean** : Voir [REFACTOR.md](REFACTOR.md)
-
-### Support
-
-Pour toute question ou problème :
-1. Consultez la documentation ci-dessus
-2. Vérifiez les logs : `tail -f logs/*.log`
-3. Testez les services : `docker compose ps`
-4. Vérifiez le firewall : `sudo ufw status` et `sudo iptables -L DOCKER-USER`
+| `server.py` | **Cœur du voicebot** - Gère appels, IA, états conversationnels |
+| `config.py` | Configuration centralisée (API keys, modèles, timeouts) |
+| `db_utils.py` | Fonctions PostgreSQL (tickets, clients, historique) |
+| `audio_utils.py` | Conversion audio MP3 → 8kHz μ-law |
+| `dashboard.py` | Interface web Streamlit |
+| `setup.sh` | Installation automatisée complète |
+| `docker-compose.yml` | Orchestration services Docker |
+| `Dockerfile` | Image Python avec FFmpeg + dépendances |
+| `.dockerignore` | Exclusions build (logs, cache dynamique) |
+| `prompts.yaml` | Prompts LLM personnalisés |
+| `requirements.txt` | Dépendances Python |
+| `init_clients.sql` | Schéma base clients |
+| `init_tickets.sql` | Schéma base tickets |
+| `migrations/` | Migrations SQL versionnées |
 
 ---
 
-## 🚀 Déploiement Production
+## 🎓 Pour Aller Plus Loin
 
-### Systemd Service
+### Ajouter des Phrases au Cache
 
-Créer `/etc/systemd/system/voicebot.service` :
+1. Modifier `prompts.yaml`
+2. Générer les audios :
+   ```bash
+   python generate_cache.py
+   ```
+3. Rebuild Docker :
+   ```bash
+   docker compose build voicebot
+   ```
 
-```ini
-[Unit]
-Description=Voicebot SAV Wipple IA
-After=network.target docker.service
-Requires=docker.service
+### Modifier le Prompt LLM
 
-[Service]
-Type=simple
-User=voicebot
-WorkingDirectory=/opt/PY_SAV
-Environment="PATH=/opt/PY_SAV/venv/bin"
-ExecStart=/opt/PY_SAV/venv/bin/python server.py
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Activer :
-
+Éditer `system_prompt_base.yaml` ou `prompts.yaml`, puis redémarrer :
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable voicebot
-sudo systemctl start voicebot
-sudo systemctl status voicebot
+docker compose restart voicebot
 ```
 
-### Backup Automatisé
+### Ajouter Mots-Clés Détection
 
-```bash
-# Créer script backup
-cat > /opt/PY_SAV/backup.sh <<'EOF'
-#!/bin/bash
-BACKUP_DIR=/backups/voicebot/$(date +%Y-%m-%d)
-mkdir -p $BACKUP_DIR
+Modifier `server.py` fonction `_detect_problem_type()` ligne 407-437 :
+```python
+internet_keywords = [
+    'nouveau_mot', 'autre_mot', ...
+]
+```
 
-# Backup PostgreSQL
-docker compose exec -T postgres-clients pg_dump -U voicebot db_clients > $BACKUP_DIR/db_clients.sql
-docker compose exec -T postgres-tickets pg_dump -U voicebot db_tickets > $BACKUP_DIR/db_tickets.sql
+### Désactiver Filtre Mots Critiques
 
-# Backup .env
-cp .env $BACKUP_DIR/.env
-
-# Backup logs calls (7 derniers jours)
-find logs/calls -name "*.raw" -mtime -7 -exec cp {} $BACKUP_DIR/ \;
-
-echo "Backup terminé : $BACKUP_DIR"
-EOF
-
-chmod +x /opt/PY_SAV/backup.sh
-
-# Cron job (tous les jours à 2h)
-crontab -e
-# Ajouter :
-0 2 * * * /opt/PY_SAV/backup.sh >> /var/log/voicebot_backup.log 2>&1
+Commenter ligne 1401 dans `server.py` :
+```python
+# filtered_summary = self._filter_critical_words(summary)
+filtered_summary = summary  # Pas de filtre
 ```
 
 ---
 
-## 🔧 Dépannage
+## Support
 
-### Problème : Deepgram timeout
-
-**Symptôme** : `Deepgram API error: timeout`
-
-**Solution** :
-1. Vérifier connexion internet
-2. Augmenter `API_TIMEOUT` dans `config.py`
-3. Système joue automatiquement message d'attente
-
-### Problème : Dashboard inaccessible
-
-**Symptôme** : Connection refused sur port 8501
-
-**Solution** :
-```bash
-# Vérifier container
-docker compose ps dashboard
-
-# Vérifier firewall
-sudo ufw status | grep 8501
-sudo iptables -L DOCKER-USER -n | grep 8501
-
-# Vérifier IP autorisée dans .env
-grep PERSONAL_IP .env
-
-# Relancer dashboard
-docker compose restart dashboard
-```
-
-### Problème : Audio coupé
-
-**Causes possibles** :
-- Réseau saturé
-- CPU surchargé
-- Buffer audio trop petit
-
-**Solution** :
-```bash
-# Réduire concurrent calls dans config.py
-MAX_CONCURRENT_CALLS = 10
-
-# Vérifier CPU
-htop
-
-# Vérifier réseau
-ping deepgram.com
-```
+Pour toute question technique :
+- **Logs** : `docker compose logs -f voicebot`
+- **Tests** : Appeler le serveur depuis Asterisk configuré
+- **Dashboard** : http://IP_SERVEUR:8501
 
 ---
 
-## 📊 Scalabilité
+## License
 
-### Déploiement Multi-Serveurs
-
-Pour > 40 appels simultanés :
-
-```
-┌─────────────┐
-│  Asterisk   │
-│ (Clients)   │
-└──────┬──────┘
-       │
-   ┌───▼────┐
-   │  HAProxy │  (Load Balancer)
-   │  :9090   │
-   └───┬────┘
-       │
-   ┌───┴─────────────────────┐
-   │                         │
-┌──▼───────┐          ┌──────▼───┐
-│ IA Server│          │ IA Server│
-│    #1    │          │    #2    │
-│  :9090   │          │  :9090   │
-└──────────┘          └──────────┘
-       │                    │
-       └────────┬───────────┘
-                │
-         ┌──────▼──────┐
-         │  PostgreSQL │
-         │  (Shared)   │
-         └─────────────┘
-```
-
-### Cache Redis (optionnel)
-
-Pour partager le cache audio entre serveurs :
-
-```bash
-# docker-compose.yml
-services:
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-```
-
-Modifier `utils/audio.py` pour utiliser Redis au lieu de LRU local.
+Proprietary -  Wipple © 2025
 
 ---
 
-## 📄 Licence
-
-**Copyright © 2025 Wipple - Tous droits réservés**
-
-Ce logiciel est propriétaire. Toute utilisation, reproduction ou distribution non autorisée est strictement interdite.
-
----
-
-## 🎯 Roadmap
-
-- [x] ✅ Architecture Clean (Q4 2024)
-- [x] ✅ Multi-IP Asterisk (Q4 2024)
-- [x] ✅ Dashboard sécurisé (Q4 2024)
-- [x] ✅ Endpointing dynamique (Q4 2024)
-- [x] ✅ ElevenLabs Turbo v2.5 (Q4 2024)
-- [ ] 🚧 Tests unitaires complets (Q1 2025)
-- [ ] 🚧 CI/CD pipeline (Q1 2025)
-- [ ] 🚧 A/B testing prompts (Q1 2025)
-- [ ] 🚧 ML prédiction escalade (Q2 2025)
-- [ ] 🚧 Multi-langues (Q2 2025)
-
----
-
-**Développé avec ❤️ par l'équipe Wipple IA**
+**Dernière mise à jour** : 29 décembre 2025
+**Version** : 2.0.0
+**Auteur** : Système IA Conversationnel

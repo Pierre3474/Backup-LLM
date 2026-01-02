@@ -39,6 +39,7 @@ logs/
 
 # Audio cache
 assets/cache/
+cache/
 
 # Docker
 *.pid

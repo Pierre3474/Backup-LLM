@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Logs
+logs/
+*.log
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Documentation (exclude from Docker image)
+*.md
+docs/
+
+# Config files (will be mounted)
+.env
+.env.*
+
+# Cache files (exclure SEULEMENT le cache dynamique, PAS assets/cache/ qui contient les audios pré-générés)
+cache/
+
+# System files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Development
+.vscode/
+.idea/
+*.sublime-*
+
+# Test files
+tests/
+pytest.ini
+.pytest_cache/
+
+# CI/CD
+.travis.yml
+.gitlab-ci.yml

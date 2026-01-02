@@ -4,7 +4,9 @@
 CREATE TABLE IF NOT EXISTS tickets (
     id SERIAL PRIMARY KEY,
     call_uuid VARCHAR(255) NOT NULL UNIQUE,
-    phone_number VARCHAR(20) NOT NULL,
+    phone_number VARCHAR(50) NOT NULL,
+    client_name VARCHAR(200),  -- Nom complet du client
+    client_email VARCHAR(255),  -- Email du client
     problem_type VARCHAR(50) DEFAULT 'unknown',
     status VARCHAR(50) DEFAULT 'unknown',
     sentiment VARCHAR(50) DEFAULT 'neutral',
@@ -12,6 +14,8 @@ CREATE TABLE IF NOT EXISTS tickets (
     duration_seconds INTEGER DEFAULT 0,
     tag VARCHAR(100) DEFAULT 'UNKNOWN',
     severity VARCHAR(20) DEFAULT 'MEDIUM',
+    call_date DATE DEFAULT CURRENT_DATE,
+    call_time TIME DEFAULT CURRENT_TIME,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

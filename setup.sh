@@ -7,6 +7,7 @@
 #   ./setup.sh              # Mode install (par défaut)
 #   ./setup.sh install      # Mode install (explicite)
 #   ./setup.sh clean        # Mode clean (nettoyage complet)
+#   ./setup.sh reset        # Mode reset (nettoyage + conservation .env)
 #
 # Environnement: Debian 13
 # Exécution: root
@@ -221,12 +222,9 @@ get_user_vars() {
 generate_env_file() {
     log_info "Génération du fichier .env..."
 
-    # Construire les DSN avec les noms de services Docker (réseau interne)
-    # Important: Utiliser les noms de services et non l'IP publique pour éviter Connection Refused
-    DB_CLIENTS_DSN="postgresql://voicebot:${DB_PASSWORD}@postgres-clients:5432/db_clients"
-    DB_TICKETS_DSN="postgresql://voicebot:${DB_PASSWORD}@postgres-tickets:5432/db_tickets"
-
     # Créer le fichier .env
+    # IMPORTANT: Les DSN doivent contenir le mot de passe en dur (pas de ${VAR})
+    # car les fichiers .env ne supportent PAS l'interpolation de variables
     cat > .env <<EOF
 # ============================================
 # Configuration Voicebot PY_SAV
@@ -247,8 +245,8 @@ ELEVENLABS_VOICE_ID=N2lVS1w4EtoT3dr4eOWO
 
 # === Database Configuration ===
 DB_PASSWORD=${DB_PASSWORD}
-DB_CLIENTS_DSN=${DB_CLIENTS_DSN}
-DB_TICKETS_DSN=${DB_TICKETS_DSN}
+DB_CLIENTS_DSN=postgresql://voicebot:${DB_PASSWORD}@postgres-clients:5432/db_clients
+DB_TICKETS_DSN=postgresql://voicebot:${DB_PASSWORD}@postgres-tickets:5432/db_tickets
 
 # === Server Configuration ===
 SERVER_HOST_IP=${SERVER_HOST_IP}
@@ -422,7 +420,22 @@ setup_python_environment() {
 ################################################################################
 
 generate_audio_cache() {
-    log_info "Génération du cache audio..."
+    # Vérifier si le cache existe déjà
+    if [[ -d "assets/cache" ]] && [[ $(ls -A assets/cache 2>/dev/null | wc -l) -gt 0 ]]; then
+        log_info "Cache audio existant détecté ($(ls -1 assets/cache/*.raw 2>/dev/null | wc -l) fichiers)"
+        echo ""
+        read -p "$(echo -e ${YELLOW}Voulez-vous régénérer le cache audio ? [y/N]:${NC} )" -n 1 -r
+        echo ""
+
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Conservation du cache audio existant"
+            return 0
+        fi
+
+        log_info "Régénération du cache audio..."
+    else
+        log_info "Génération du cache audio (première fois)..."
+    fi
 
     # Vérifier que l'environnement virtuel est activé
     if [[ -z "$VIRTUAL_ENV" ]]; then
@@ -626,14 +639,14 @@ display_summary() {
     echo -e "${GREEN}Installation terminée avec succès!${NC}"
     echo "======================================================================="
     echo ""
-    echo "📊 Services disponibles:"
+    echo " Services disponibles:"
     echo ""
     echo -e "  ${BLUE}AudioSocket (Asterisk):${NC}  ${SERVER_HOST_IP}:9090  ${GREEN}✓ Sécurisé (${#ASTERISK_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}PostgreSQL (clients):${NC}    ${SERVER_HOST_IP}:5432  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}PostgreSQL (tickets):${NC}    ${SERVER_HOST_IP}:5433  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo -e "  ${BLUE}Dashboard Streamlit:${NC}     http://${SERVER_HOST_IP}:8501  ${GREEN}✓ Sécurisé (${#PERSONAL_IPS[@]} IP(s))${NC}"
     echo ""
-    echo "🔒 Sécurité:"
+    echo " Sécurité:"
     echo -e "  ${GREEN}✓${NC} Services d'administration accessibles depuis ${#PERSONAL_IPS[@]} IP(s) autorisée(s):"
     for personal_ip in "${PERSONAL_IPS[@]}"; do
         echo -e "      → ${GREEN}${personal_ip}${NC}"
@@ -643,12 +656,12 @@ display_summary() {
         echo -e "      → ${GREEN}${asterisk_ip}${NC}"
     done
     echo ""
-    echo "🤖 Serveur Intelligence Artificielle:"
+    echo " Serveur Intelligence Artificielle:"
     echo -e "  ${BLUE}Adresse IP de ce serveur IA:${NC} ${GREEN}${SERVER_HOST_IP}${NC}"
     echo -e "  ${BLUE}Port AudioSocket:${NC}            ${GREEN}9090${NC}"
     echo ""
     echo "☎️  Configuration Asterisk (serveur distant: ${REMOTE_ASTERISK_IP}):"
-    echo -e "  ${YELLOW}⚠️  IMPORTANT: Vous devez configurer votre serveur Asterisk distant${NC}"
+    echo -e "  ${YELLOW}  IMPORTANT: Vous devez configurer votre serveur Asterisk distant${NC}"
     echo ""
     echo -e "  ${BLUE}Configuration dialplan requise:${NC}"
     echo -e "    ${BLUE}Set(GLOBAL(CALLER_\${UNIQUEID})=\${CALLERID(num)})${NC}"
@@ -660,7 +673,7 @@ display_summary() {
     echo ""
     echo -e "  ${YELLOW}    Consultez le fichier 'asterisk_config.txt' pour la configuration complète.${NC}"
     echo ""
-    echo "🚀 Lancement du serveur voicebot..."
+    echo " Lancement du serveur voicebot..."
     echo "   (Ctrl+C pour arrêter)"
     echo ""
     echo "======================================================================="
@@ -669,16 +682,46 @@ display_summary() {
 
 ################################################################################
 # Fonction: start_voicebot_server
-# Lance le serveur Python voicebot
+# Affiche les informations du serveur voicebot (qui tourne dans Docker)
 ################################################################################
 
 start_voicebot_server() {
-    log_info "Activation de l'environnement virtuel..."
-    source venv/bin/activate
-
-    log_info "Démarrage du serveur voicebot sur le port 9090..."
     echo ""
-    python server.py
+    echo "======================================================================="
+    log_success " Serveur voicebot démarré dans Docker"
+    echo "======================================================================="
+    echo ""
+    log_info "Le serveur voicebot tourne dans les conteneurs Docker:"
+    echo ""
+    echo "   Conteneurs actifs:"
+    echo "     - voicebot-app       (serveur principal sur port 9090)"
+    echo "     - postgres-clients   (base de données clients)"
+    echo "     - postgres-tickets   (base de données tickets)"
+    echo ""
+    echo "   Commandes utiles:"
+    echo ""
+    echo "     Voir les logs du voicebot:"
+    echo "       ${BLUE}docker logs -f voicebot-app${NC}"
+    echo ""
+    echo "     Voir les logs avec emojis (débogage):"
+    echo "       ${BLUE}docker logs -f voicebot-app | grep -E '||'${NC}"
+    echo ""
+    echo "     Vérifier l'état des conteneurs:"
+    echo "       ${BLUE}docker ps${NC}"
+    echo ""
+    echo "     Redémarrer le voicebot:"
+    echo "       ${BLUE}docker restart voicebot-app${NC}"
+    echo ""
+    echo "     Arrêter tous les conteneurs:"
+    echo "       ${BLUE}docker compose down${NC}"
+    echo ""
+    echo "     Redémarrer tous les conteneurs:"
+    echo "       ${BLUE}docker compose up -d${NC}"
+    echo ""
+    echo "======================================================================="
+    log_info "Le serveur est prêt à recevoir des appels sur le port 9090"
+    echo "======================================================================="
+    echo ""
 }
 
 ################################################################################
@@ -693,7 +736,7 @@ check_existing_installation() {
     if [[ -f ".env" ]]; then
         echo ""
         echo "======================================================================="
-        echo -e "${YELLOW}⚠️  CONFIGURATION EXISTANTE DÉTECTÉE${NC}"
+        echo -e "${YELLOW}  CONFIGURATION EXISTANTE DÉTECTÉE${NC}"
         echo "======================================================================="
         echo ""
         log_info "Un fichier .env a été trouvé avec une configuration existante."
@@ -917,6 +960,91 @@ clean_environment() {
 }
 
 ################################################################################
+# Fonction: reset_keep_env
+# Reset complet mais garde le fichier .env (pour mise à jour propre)
+################################################################################
+
+reset_keep_env() {
+    echo ""
+    echo "======================================================================="
+    echo -e "${BLUE}Reset Propre avec Conservation du .env${NC}"
+    echo "======================================================================="
+    echo ""
+
+    log_info "Cette opération va:"
+    echo "  ✓ Arrêter et supprimer TOUS les conteneurs Docker"
+    echo "  ✓ Supprimer TOUS les volumes Docker (données DB effacées)"
+    echo "  ✓ Supprimer les réseaux Docker"
+    echo "  ✓ Supprimer l'environnement virtuel Python"
+    echo "  ✓ Supprimer le cache audio"
+    echo "  ✓ Supprimer les logs"
+    echo ""
+    echo -e "${GREEN}  ✓ CONSERVER le fichier .env (clés API, mots de passe)${NC}"
+    echo ""
+    log_warning "Les données des bases PostgreSQL seront PERDUES"
+    echo ""
+
+    read -p "$(echo -e ${YELLOW}Voulez-vous continuer? [y/N]:${NC} )" -n 1 -r
+    echo ""
+
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Reset annulé"
+        exit 0
+    fi
+
+    # Sauvegarder le .env si présent
+    ENV_BACKUP=""
+    if [[ -f ".env" ]]; then
+        log_info "Sauvegarde du fichier .env..."
+        ENV_BACKUP=$(cat .env)
+        log_success ".env sauvegardé en mémoire"
+    else
+        log_warning "Aucun fichier .env trouvé - rien à sauvegarder"
+    fi
+
+    # Arrêter et supprimer la stack Docker
+    if [[ -f "docker-compose.yml" ]]; then
+        log_info "Arrêt et suppression de la stack Docker (conteneurs + volumes)..."
+        docker compose down -v 2>/dev/null || log_warning "Erreur lors de l'arrêt de Docker"
+    fi
+
+    # Supprimer l'environnement virtuel
+    if [[ -d "venv" ]]; then
+        log_info "Suppression de l'environnement virtuel Python..."
+        rm -rf venv
+    fi
+
+    # Supprimer docker-compose.override.yml (sera régénéré)
+    if [[ -f "docker-compose.override.yml" ]]; then
+        log_info "Suppression de docker-compose.override.yml..."
+        rm -f docker-compose.override.yml
+    fi
+
+    # Supprimer le cache audio
+    if [[ -d "assets/cache" ]]; then
+        log_info "Suppression du cache audio..."
+        rm -rf assets/cache/*
+    fi
+
+    # Supprimer les logs
+    if [[ -d "logs" ]]; then
+        log_info "Suppression des logs..."
+        rm -rf logs/*
+    fi
+
+    # Restaurer le .env
+    if [[ -n "$ENV_BACKUP" ]]; then
+        log_info "Restauration du fichier .env..."
+        echo "$ENV_BACKUP" > .env
+        chmod 600 .env
+        log_success ".env restauré avec succès"
+    fi
+
+    log_success "Reset terminé - .env conservé"
+    echo ""
+}
+
+################################################################################
 # Point d'entrée principal
 ################################################################################
 
@@ -945,13 +1073,35 @@ main() {
                 log_info "Installation non lancée. Utilisez './setup.sh install' pour installer."
             fi
             ;;
+        reset)
+            reset_keep_env
+
+            # Demander si l'utilisateur souhaite réinstaller après le reset
+            echo ""
+            log_info "Le reset est terminé. Vous pouvez maintenant réinstaller proprement."
+            echo ""
+            read -p "$(echo -e ${BLUE}Souhaitez-vous lancer l\'installation maintenant? [Y/n]:${NC} )" -n 1 -r
+            echo ""
+
+            # Par défaut on installe (Y par défaut)
+            if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+                install_full_stack
+            else
+                log_info "Installation non lancée. Utilisez './setup.sh install' pour installer."
+            fi
+            ;;
         *)
             log_error "Mode inconnu: $MODE"
             echo ""
             echo "Usage:"
             echo "  ./setup.sh              # Mode install (par défaut)"
             echo "  ./setup.sh install      # Mode install (explicite)"
-            echo "  ./setup.sh clean        # Mode clean (nettoyage)"
+            echo "  ./setup.sh clean        # Mode clean (nettoyage complet + suppression .env)"
+            echo "  ./setup.sh reset        # Mode reset (nettoyage complet + conservation .env)"
+            echo ""
+            echo "Différences entre clean et reset:"
+            echo "  clean : Supprime TOUT (y compris .env) - Pour repartir de zéro"
+            echo "  reset : Garde le .env - Pour mise à jour ou réinstallation propre"
             exit 1
             ;;
     esac

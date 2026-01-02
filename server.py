@@ -10,10 +10,11 @@ import uvloop
 import logging
 import signal
 import sys
-import os
 import struct
 import time
 import hashlib
+import random
+import json
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, List
@@ -35,6 +36,8 @@ from panoramisk import Manager as AMIManager
 import config
 from audio_utils import generate_silence, stream_and_convert_to_8khz
 import db_utils
+from db_utils import sanitize_string
+import metrics
 
 # Configure logging
 logging.basicConfig(
@@ -45,6 +48,67 @@ logger = logging.getLogger(__name__)
 
 
 # === Utils ===
+def load_stt_keywords() -> list:
+    """
+    Charge les keywords depuis stt_keywords.yaml pour améliorer la reconnaissance STT
+
+    Returns:
+        Liste de keywords formatés pour Deepgram (ex: ["Pierre:3", "Martin:3"])
+    """
+    try:
+        keywords_file = Path(__file__).parent / "stt_keywords.yaml"
+
+        if not keywords_file.exists():
+            logger.warning("stt_keywords.yaml not found, STT will work without keyword boosting")
+            return []
+
+        with open(keywords_file, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+
+        # Fusionner toutes les catégories de keywords
+        all_keywords = []
+        for category, keywords_list in data.items():
+            if isinstance(keywords_list, list):
+                all_keywords.extend(keywords_list)
+
+        logger.info(f"✓ Loaded {len(all_keywords)} STT keywords for improved recognition")
+        return all_keywords
+
+    except Exception as e:
+        logger.error(f"Failed to load STT keywords: {e}")
+        return []
+
+
+def sanitize_call_id(call_id: str) -> str:
+    """
+    Nettoie un call_id pour éviter les caractères dangereux dans les chemins de fichiers
+
+    Args:
+        call_id: ID brut potentiellement avec caractères dangereux
+
+    Returns:
+        ID sécurisé avec uniquement [a-zA-Z0-9_-]
+    """
+    if not call_id:
+        return "unknown"
+
+    # Supprimer les octets nuls et les caractères de contrôle
+    cleaned = call_id.replace('\x00', '').replace('\r', '').replace('\n', '')
+
+    # Garder uniquement les caractères alphanumériques, tirets et underscores
+    cleaned = re.sub(r'[^a-zA-Z0-9_-]', '_', cleaned)
+
+    # Limiter la longueur à 64 caractères
+    cleaned = cleaned[:64]
+
+    # Si vide après nettoyage, générer un ID aléatoire
+    if not cleaned:
+        import uuid
+        cleaned = str(uuid.uuid4())
+
+    return cleaned
+
+
 def clean_email_text(text: str) -> str:
     """Nettoie une transcription d'email (at->@, dot->., etc.)"""
     if not text:
@@ -76,7 +140,12 @@ class ConversationState(Enum):
     INIT = "init"
     WELCOME = "welcome"
     TICKET_VERIFICATION = "ticket_verification"
-    IDENTIFICATION = "identification"
+    IDENTIFICATION = "identification"  # Demande prénom
+    SPELL_NAME = "spell_name"  # Demande épellation du nom
+    COMPANY_INPUT = "company_input"  # Demande entreprise
+    EMAIL_INPUT = "email_input"  # Demande email
+    NAME_CONFIRMATION = "name_confirmation"  # Confirmation du nom
+    COMPANY_CONFIRMATION = "company_confirmation"  # Confirmation de l'entreprise
     DIAGNOSTIC = "diagnostic"
     SOLUTION = "solution"
     VERIFICATION = "verification"
@@ -217,7 +286,7 @@ def construct_system_prompt(client_info: Dict = None, client_history: list = Non
         "PROCÉDURE DE DIAGNOSTIC :\n"
         "1. Demande quel type de problème : 'Internet' ou 'Mobile' ?\n"
         "2. Pour INTERNET :\n"
-        "   a) ⚠️ IMPÉRATIF SÉCURITÉ : AVANT toute manipulation de box, tu DOIS dire :\n"
+        "   a)  IMPÉRATIF SÉCURITÉ : AVANT toute manipulation de box, tu DOIS dire :\n"
         "      'Attention, si vous appelez d'une ligne fixe, redémarrer la box coupera l'appel. "
         "Êtes-vous sur mobile ?'\n"
         "   b) Si OUI mobile : Guide le client pour redémarrer la box (débrancher 10 sec)\n"
@@ -247,7 +316,7 @@ def construct_system_prompt(client_info: Dict = None, client_history: list = Non
         prompt += f"- {recent_calls_count} appel(s) récent(s) dans l'historique\n"
 
         if unresolved_count > 0:
-            prompt += f"- {unresolved_count} problème(s) NON RÉSOLU(S) ⚠️\n"
+            prompt += f"- {unresolved_count} problème(s) NON RÉSOLU(S) \n"
             # Mentionner le dernier problème non résolu
             last_unresolved = next((t for t in client_history if t['status'] != 'resolved'), None)
             if last_unresolved:
@@ -333,6 +402,9 @@ class CallHandler:
         # Deepgram connection
         self.deepgram_connection = None
 
+        # STT Keywords pour améliorer la reconnaissance
+        self.stt_keywords = load_stt_keywords()
+
         # Logging audio
         self.audio_log_file = None
         self._init_audio_logging()
@@ -351,7 +423,8 @@ class CallHandler:
         """Initialise le fichier de log audio RAW"""
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            log_filename = config.LOGS_DIR / f"call_{self.call_id}_{timestamp}.raw"
+            safe_call_id = sanitize_call_id(self.call_id)
+            log_filename = config.LOGS_DIR / f"call_{safe_call_id}_{timestamp}.raw"
             self.audio_log_file = open(log_filename, 'wb')
             logger.info(f"Audio logging: {log_filename}")
         except Exception as e:
@@ -384,6 +457,120 @@ class CallHandler:
             return True
 
         return False
+
+    def _detect_problem_type(self, user_text: str) -> str:
+        """
+        Détecte intelligemment le type de problème (internet ou mobile/téléphone)
+        en analysant les mots-clés spécifiques du client
+
+        Args:
+            user_text: Texte dit par l'utilisateur
+
+        Returns:
+            "internet" ou "mobile"
+
+        Exemples:
+            "ma connexion wifi ne marche pas" → "internet"
+            "ma ligne téléphone est coupée" → "mobile"
+            "j'ai pas de réseau" → "mobile"
+        """
+        text_lower = user_text.lower()
+
+        # Mots-clés INTERNET (connexion, débit, navigation)
+        internet_keywords = [
+            # Connexion générale
+            'internet', 'connexion', 'wifi', 'wi-fi', 'réseau wifi',
+            # Équipement
+            'box', 'modem', 'routeur', 'fibre', 'adsl',
+            # Problèmes connexion
+            'déconnecté', 'pas de connexion', 'connexion lente', 'débit',
+            'coupure internet', 'plus internet', "pas d'internet",
+            # Navigation
+            'navigateur', 'site web', 'page web', 'youtube', 'streaming',
+            'téléchargement', 'upload', 'download',
+            # Diagnostic
+            'voyant rouge', 'voyant orange', 'led rouge', 'lumière rouge'
+        ]
+
+        # Mots-clés MOBILE/TÉLÉPHONE (voix, appel, ligne)
+        mobile_keywords = [
+            # Téléphone fixe
+            'téléphone', 'ligne', 'ligne fixe', 'fixe', 'téléphonie',
+            # Problèmes voix
+            'voix', 'voix coupée', 'coupure voix', 'grésille', 'grésillements',
+            'parasite', 'écho', 'crachotements',
+            # Appels
+            'appel', 'appeler', 'communication', 'sonnerie', 'tonalité',
+            "pas de tonalité", 'décrocher',
+            # Mobile
+            'mobile', 'portable', 'smartphone', 'téléphone portable',
+            'réseau mobile', '4g', '5g', 'forfait', 'data mobile',
+            # Problèmes réseau mobile
+            'pas de réseau', 'aucun réseau', 'réseau faible', 'signal faible'
+        ]
+
+        # Compter les correspondances
+        internet_score = sum(1 for keyword in internet_keywords if keyword in text_lower)
+        mobile_score = sum(1 for keyword in mobile_keywords if keyword in text_lower)
+
+        # Décision basée sur le score
+        if internet_score > mobile_score:
+            logger.info(f"[{self.call_id}] Problem type detected: INTERNET (score: {internet_score} vs {mobile_score})")
+            return "internet"
+        elif mobile_score > internet_score:
+            logger.info(f"[{self.call_id}] Problem type detected: MOBILE (score: {mobile_score} vs {internet_score})")
+            return "mobile"
+        else:
+            # Égalité ou aucun mot-clé → Par défaut INTERNET (plus fréquent)
+            logger.info(f"[{self.call_id}] Problem type unclear (scores equal: {internet_score}), defaulting to INTERNET")
+            return "internet"
+
+    def _filter_critical_words(self, text: str) -> str:
+        """
+        Filtre les mots critiques/sensibles du texte pour éviter mauvaises interprétations
+
+        Args:
+            text: Texte à filtrer (summary généré par LLM)
+
+        Returns:
+            Texte filtré sans mots critiques
+        """
+        if not text:
+            return text
+
+        # Liste de mots critiques à remplacer (insultes, propos sensibles)
+        critical_words = {
+            # Insultes courantes
+            'con': '***',
+            'connard': '***',
+            'connasse': '***',
+            'putain': '***',
+            'merde': '***',
+            'bordel': '***',
+            'enculé': '***',
+            'salope': '***',
+            'pute': '***',
+
+            # Expressions agressives
+            'va te faire': '***',
+            'nique': '***',
+            'fous-toi': '***',
+
+            # Mots sensibles business
+            'arnaque': 'pratique contestable',
+            'voleur': 'surfacturation',
+            'incompétent': 'difficulté technique',
+            'nul': 'insuffisant',
+            'pourri': 'défaillant'
+        }
+
+        filtered_text = text.lower()
+
+        # Remplacer chaque mot critique
+        for word, replacement in critical_words.items():
+            filtered_text = filtered_text.replace(word, replacement)
+
+        return filtered_text
 
     async def _get_callerid_via_ami(self, uniqueid: str) -> Optional[str]:
         """
@@ -433,7 +620,8 @@ class CallHandler:
 
             # Vérifier la réponse
             if response and hasattr(response, 'Value'):
-                phone_number = response.Value
+                # SÉCURITÉ : Nettoyer les octets nuls des données AMI
+                phone_number = sanitize_string(response.Value)
                 logger.info(f"[{self.call_id}] CALLERID retrieved via AMI: {phone_number}")
                 return phone_number
             else:
@@ -613,7 +801,8 @@ class CallHandler:
                 interim_results=True,
                 punctuate=True,
                 vad_events=True,
-                endpointing=config.DEEPGRAM_ENDPOINTING_LONG  # 1200ms pour ne pas couper pendant les descriptions
+                endpointing=config.DEEPGRAM_ENDPOINTING_LONG,  # 1200ms pour ne pas couper pendant les descriptions
+                keywords=self.stt_keywords if self.stt_keywords else None  # Booste la reconnaissance des noms propres
             )
 
             # Créer la connexion (API Deepgram 3.7+)
@@ -634,7 +823,8 @@ class CallHandler:
                             # On traite la phrase immédiatement (même si pas finale)
                             # pour réagir rapidement à l'interruption
                             if result.is_final:
-                                logger.info(f"[{self.call_id}] User interrupted (final): {sentence}")
+                                # LOG DÉBOGAGE: Interruption du client (barge-in)
+                                logger.info(f"[{self.call_id}]  CLIENT (INTERRUPTION): {sentence}")
                                 self.last_user_speech_time = time.time()
 
                                 # ANALYSE DE SENTIMENT TEMPS RÉEL
@@ -665,7 +855,8 @@ class CallHandler:
 
                         # Traitement normal si le bot ne parlait pas
                         elif result.is_final:
-                            logger.info(f"[{self.call_id}] User: {sentence}")
+                            # LOG DÉBOGAGE: Transcription finale du client
+                            logger.info(f"[{self.call_id}]  CLIENT (STT): {sentence}")
                             self.last_user_speech_time = time.time()
 
                             # ANALYSE DE SENTIMENT TEMPS RÉEL
@@ -757,12 +948,11 @@ class CallHandler:
                     ticket = pending_tickets[0]  # Premier ticket en attente
                     problem_type_fr = "connexion" if ticket['problem_type'] == "internet" else "mobile"
 
-                    welcome_with_ticket = (
-                        f"Bonjour {client_info['first_name']} {client_info['last_name']}, "
-                        f"je vois un ticket ouvert concernant votre {problem_type_fr}. "
-                        f"Est-ce à ce sujet ?"
+                    # ARCHITECTURE HYBRIDE: Cache joué immédiatement, génération en arrière-plan
+                    await self._say_hybrid(
+                        "greet",  # Cache joué instantanément
+                        f"{client_info['first_name']} {client_info['last_name']}, je vois un ticket ouvert concernant votre {problem_type_fr}. Est-ce à ce sujet ?"
                     )
-                    await self._say_dynamic(welcome_with_ticket)
                     logger.info(f"[{self.call_id}] Ticket verification: {ticket['id']} ({ticket['problem_type']})")
 
                     # Stocker le ticket dans le contexte
@@ -770,58 +960,45 @@ class CallHandler:
                     self.state = ConversationState.TICKET_VERIFICATION
 
                 else:
-                    # Pas de ticket en attente, message personnalisé normal
-                    welcome_personalized = (
-                        f"Bonjour {client_info['first_name']} {client_info['last_name']}, "
-                        f"bienvenue au SAV Wouippleul. Comment puis-je vous aider ?"
+                    # Pas de ticket en attente, message personnalisé avec cache
+                    await self._say_hybrid(
+                        "greet",  # Cache : "Bonjour" joué instantanément
+                        f"{client_info['first_name']} {client_info['last_name']}, comment puis-je vous aider aujourd'hui ?"
                     )
-                    await self._say_dynamic(welcome_personalized)
                     logger.info(f"[{self.call_id}] Personalized welcome (no pending tickets)")
                     self.state = ConversationState.DIAGNOSTIC
 
             elif client_history and len(client_history) > 0:
                 # CLIENT RÉCURRENT (avec historique mais sans fiche client)
                 if pending_tickets:
-                    # Il y a des tickets en attente
+                    # Il y a des tickets en attente - UTILISER CACHE pour réponse instantanée
                     ticket = pending_tickets[0]
-                    problem_type_fr = "connexion" if ticket['problem_type'] == "internet" else "mobile"
 
-                    welcome_returning_with_ticket = (
-                        f"Bonjour, je vois que vous avez déjà appelé {len(client_history)} fois. "
-                        f"Je suis Eko, votre assistant virtuel. "
-                        f"Vous avez un ticket ouvert concernant votre {problem_type_fr}. "
-                        f"Est-ce à ce sujet ?"
-                    )
-                    await self._say_dynamic(welcome_returning_with_ticket)
-                    logger.info(f"[{self.call_id}] Returning client with pending ticket: {ticket['id']}")
+                    # Choisir la phrase en cache selon le type de problème
+                    if ticket['problem_type'] == "internet":
+                        await self._say("returning_client_pending_internet")
+                    else:
+                        await self._say("returning_client_pending_mobile")
+
+                    logger.info(f"[{self.call_id}] Returning client with pending ticket: {ticket['id']} (using cache)")
 
                     # Stocker le ticket dans le contexte
                     self.context['pending_ticket'] = ticket
                     self.state = ConversationState.TICKET_VERIFICATION
 
                 else:
-                    # Client récurrent sans ticket en attente
-                    welcome_returning = (
-                        f"Bonjour, je vois que vous avez déjà appelé {len(client_history)} fois. "
-                        f"Je suis Eko, votre assistant virtuel. "
-                        f"Comment puis-je vous aider aujourd'hui ?"
-                    )
-                    await self._say_dynamic(welcome_returning)
-                    logger.info(f"[{self.call_id}] Returning client welcome ({len(client_history)} previous calls)")
+                    # Client récurrent sans ticket en attente - UTILISER CACHE pour réponse instantanée
+                    await self._say("returning_client_no_ticket")
+                    logger.info(f"[{self.call_id}] Returning client welcome ({len(client_history)} previous calls) (using cache)")
                     self.state = ConversationState.DIAGNOSTIC
 
             else:
-                # NOUVEAU CLIENT (pas d'historique, pas de fiche)
-                # Utiliser le message en cache mais CONTINUER avec un message dynamique
-                # pour garantir que "Je suis Eko" soit dit
-                welcome_new = (
-                    "Bonjour et bienvenue au service support technique de Wipple. "
-                    "Je suis Eko, votre assistant virtuel. "
-                    "Comment puis-je vous aider aujourd'hui ?"
-                )
-                await self._say_dynamic(welcome_new)
-                logger.info(f"[{self.call_id}] New client welcome")
-                self.state = ConversationState.DIAGNOSTIC
+                # NOUVEAU CLIENT - Accueil + demande d'identité automatique
+                await self._say("greet")     # Cache : "Bonjour"
+                await self._say("welcome")   # Cache : "bienvenue au SAV Wouippleul..."
+                await self._say("ask_identity")  # Cache : "Pour mieux vous aider, puis-je avoir votre nom et prénom ?"
+                logger.info(f"[{self.call_id}] New client welcome (using cache) - asking for identity")
+                self.state = ConversationState.AWAITING_IDENTITY
 
             # BOUCLE DE CONVERSATION : Garder le handler actif
             # Le traitement des réponses se fait via _process_user_input() appelé par Deepgram
@@ -880,7 +1057,8 @@ class CallHandler:
                 # Vérifier si le client appelle pour le ticket en attente
                 user_lower = user_text.lower()
 
-                if any(word in user_lower for word in ["oui", "yes", "exact", "c'est", "correct", "affirmatif"]):
+                # Détection améliorée du OUI
+                if any(word in user_lower for word in ["oui", "yes", "exact", "c'est", "correct", "affirmatif", "bien sûr", "tout à fait", "effectivement"]):
                     # OUI, c'est pour le ticket en attente
                     logger.info(f"[{self.call_id}] Client confirms ticket: {self.context['pending_ticket']['id']}")
                     await self._say("ticket_transfer_ok")
@@ -892,19 +1070,29 @@ class CallHandler:
                     self.state = ConversationState.TRANSFER
                     self.is_active = False
 
-                elif any(word in user_lower for word in ["non", "no", "pas", "autre", "différent"]):
+                # Détection améliorée du NON (incluant "du tout", "pas du tout", etc.)
+                elif any(word in user_lower for word in [
+                    "non", "no", "pas", "autre", "différent",
+                    "tout", "du tout", "pas du tout", "aucunement",
+                    "absolument pas", "négatif", "jamais"
+                ]):
                     # NON, c'est pour un autre problème
                     logger.info(f"[{self.call_id}] Client has different issue")
                     await self._say("ticket_not_related")
+                    # Attendre que le message soit bien joué avant de continuer
+                    audio_data = self.audio_cache.get("ticket_not_related")
+                    if audio_data:
+                        audio_duration = len(audio_data) / (8000 * 2)
+                        await asyncio.sleep(audio_duration + 0.5)
                     self.state = ConversationState.DIAGNOSTIC
 
                 else:
-                    # Pas clair, redemander
-                    clarification = "Est-ce bien à ce sujet ? Répondez oui ou non s'il vous plaît."
+                    # Pas clair, redemander avec plus de patience
+                    clarification = "Je n'ai pas bien compris. Est-ce que vous appelez pour le ticket en attente ? Répondez simplement oui ou non."
                     await self._say_dynamic(clarification)
 
             elif self.state == ConversationState.WELCOME:
-                # Demander l'identification
+                # Demander le prénom
                 response = await self._ask_llm(
                     user_text,
                     system_prompt=construct_system_prompt(client_info, client_history)
@@ -913,29 +1101,85 @@ class CallHandler:
                 self.state = ConversationState.IDENTIFICATION
 
             elif self.state == ConversationState.IDENTIFICATION:
-                # --- MODIFICATION START ---
-                # On tente de nettoyer le texte pour voir s'il contient un email
-                cleaned_info = clean_email_text(user_text)
-                
-                # Si le nettoyage a changé le texte (c'est donc probablement un email), on garde le propre
-                if cleaned_info != user_text and "@" in cleaned_info:
-                    logger.info(f"[{self.call_id}] Email detected and cleaned: {cleaned_info}")
-                    self.context['user_info'] = cleaned_info
-                else:
-                    self.context['user_info'] = user_text
-                # --- MODIFICATION END ---
+                # Stocke le prénom et demande l'épellation du nom
+                self.context['first_name'] = user_text.strip().title()
+                logger.info(f"[{self.call_id}] First name collected: {self.context['first_name']}")
 
-                response = await self._ask_llm(
-                    user_text,
-                    system_prompt=construct_system_prompt(client_info, client_history)
-                )
-                await self._say_dynamic(response)
-                self.state = ConversationState.DIAGNOSTIC
+                await self._say_dynamic("Pourriez-vous épeler votre nom de famille lettre par lettre ?")
+                self.state = ConversationState.SPELL_NAME
+
+            elif self.state == ConversationState.SPELL_NAME:
+                # Stocke le nom épelé et demande l'entreprise
+                # Nettoyer l'épellation (enlever espaces, tirets, etc.)
+                spelled_name = user_text.upper().replace(" ", "").replace("-", "")
+                self.context['last_name'] = spelled_name
+                logger.info(f"[{self.call_id}] Last name spelled: {spelled_name}")
+
+                await self._say_dynamic("Merci. De quelle entreprise appelez-vous ?")
+                self.state = ConversationState.COMPANY_INPUT
+
+            elif self.state == ConversationState.COMPANY_INPUT:
+                # Stocke l'entreprise et demande l'email
+                self.context['company'] = user_text.strip()
+                logger.info(f"[{self.call_id}] Company collected: {self.context['company']}")
+
+                await self._say_dynamic("Et quelle est votre adresse email ?")
+                self.state = ConversationState.EMAIL_INPUT
+
+            elif self.state == ConversationState.EMAIL_INPUT:
+                # Stocke l'email et passe à la confirmation du nom
+                cleaned_email = clean_email_text(user_text)
+                if "@" in cleaned_email:
+                    self.context['email'] = cleaned_email
+                    logger.info(f"[{self.call_id}] Email collected: {cleaned_email}")
+                else:
+                    self.context['email'] = user_text.strip()
+                    logger.warning(f"[{self.call_id}] Email may be invalid: {user_text}")
+
+                # Phase de confirmation du nom
+                full_name = f"{self.context['first_name']} {self.context['last_name']}"
+                await self._say_dynamic(f"D'accord, bonjour {full_name}, c'est bien ça ?")
+                self.state = ConversationState.NAME_CONFIRMATION
+
+            elif self.state == ConversationState.NAME_CONFIRMATION:
+                # Vérifier la confirmation du nom
+                user_lower = user_text.lower()
+                if any(word in user_lower for word in ["oui", "exact", "correct", "c'est ça", "affirmatif", "tout à fait"]):
+                    # Nom confirmé, passer à la confirmation de l'entreprise
+                    company = self.context.get('company', '')
+                    await self._say_dynamic(f"Vous êtes bien de la société {company} ?")
+                    self.state = ConversationState.COMPANY_CONFIRMATION
+                else:
+                    # Nom incorrect, redemander
+                    await self._say_dynamic("Je suis désolé. Pouvez-vous me redonner votre prénom et nom complet ?")
+                    self.state = ConversationState.IDENTIFICATION
+
+            elif self.state == ConversationState.COMPANY_CONFIRMATION:
+                # Vérifier la confirmation de l'entreprise
+                user_lower = user_text.lower()
+                if any(word in user_lower for word in ["oui", "exact", "correct", "c'est ça", "affirmatif", "tout à fait"]):
+                    # Entreprise confirmée, passer au diagnostic avec transition
+                    transition = (
+                        "Je vais vous poser une suite de questions afin que nos techniciens arrivent "
+                        "au mieux à comprendre votre problème. Tout d'abord, pouvez-vous me décrire votre problème ?"
+                    )
+                    await self._say_dynamic(transition)
+                    self.state = ConversationState.DIAGNOSTIC
+                else:
+                    # Entreprise incorrecte, redemander
+                    await self._say_dynamic("Je suis désolé. De quelle entreprise appelez-vous ?")
+                    self.state = ConversationState.COMPANY_INPUT
 
             elif self.state == ConversationState.DIAGNOSTIC:
-                # Déterminer le type de problème
-                problem_type = "internet" if "internet" in user_text.lower() else "mobile"
+                # FILLER pour masquer latence de détection (joué AVANT l'analyse)
+                filler_phrases = ["filler_hum", "filler_ok", "filler_let_me_see"]
+                await self._say(random.choice(filler_phrases))
+
+                # Déterminer le type de problème avec détection intelligente
+                problem_type = self._detect_problem_type(user_text)
                 self.context['problem_type'] = problem_type
+
+                logger.info(f"[{self.call_id}] User described problem: '{user_text[:100]}...' → {problem_type.upper()}")
 
                 # Proposer la solution avec WARNING pour Internet
                 if problem_type == "internet":
@@ -961,11 +1205,26 @@ class CallHandler:
             elif self.state == ConversationState.VERIFICATION:
                 # Vérifier si ça marche
                 if any(word in user_text.lower() for word in ["oui", "marche", "fonctionne", "ok", "bien"]):
-                    # Problème résolu
+                    # Problème résolu - PERSONNALISER la félicitation avec LLM
+                    client_info = self.context.get('client_info')
+                    if client_info and client_info.get('first_name'):
+                        # Générer une félicitation courte et personnalisée
+                        congratulation_prompt = (
+                            f"Le client {client_info['first_name']} a résolu son problème. "
+                            f"Génère UNE SEULE phrase très courte (max 10 mots) pour le féliciter chaleureusement. "
+                            f"Sois naturel et amical."
+                        )
+                        congratulation = await self._ask_llm("", congratulation_prompt)
+
+                        # ARCHITECTURE HYBRIDE: Filler + félicitation personnalisée
+                        await self._say_hybrid("filler_ok", congratulation)
+
+                    # Finir avec au revoir du cache
                     await self._say("goodbye")
                     self.is_active = False
-                else:
-                    # Problème non résolu -> Technicien
+
+                elif any(word in user_lower for word in ["non", "marche pas", "ne fonctionne pas", "toujours pas", "pareil", "rien", "toujours rien"]):
+                    # Problème NON résolu -> Technicien
                     tech_available = await self._check_technician()
 
                     if tech_available:
@@ -986,6 +1245,11 @@ class CallHandler:
                             await asyncio.sleep(len(audio_data) / (8000 * 2) + 0.5)
                         self.is_active = False
 
+                else:
+                    # Réponse pas claire, redemander
+                    clarification = "Je n'ai pas compris votre réponse. Est-ce que le problème est résolu ? Répondez simplement oui ou non."
+                    await self._say_dynamic(clarification)
+
         except Exception as e:
             logger.error(f"[{self.call_id}] Error processing user input: {e}")
             await self._say("error")
@@ -994,6 +1258,9 @@ class CallHandler:
         """Appelle Groq LLM pour générer une réponse"""
         try:
             start_time = time.time()
+
+            # LOG DÉBOGAGE: Message du client
+            logger.info(f"[{self.call_id}]  CLIENT: {user_message}")
 
             response = self.groq_client.chat.completions.create(
                 model=config.GROQ_MODEL,
@@ -1006,11 +1273,21 @@ class CallHandler:
                 timeout=config.API_TIMEOUT
             )
 
-            return response.choices[0].message.content.strip()
+            ai_response = response.choices[0].message.content.strip()
+
+            # LOG DÉBOGAGE: Réponse de l'IA
+            logger.info(f"[{self.call_id}]  IA: {ai_response}")
+
+            latency = time.time() - start_time
+            logger.debug(f"[{self.call_id}] LLM latency: {latency:.3f}s")
+
+            return ai_response
 
         except Exception as e:
             logger.error(f"[{self.call_id}] Groq API error: {e}")
-            return "Je suis désolé, pouvez-vous répéter ?"
+            fallback_response = "Je suis désolé, pouvez-vous répéter ?"
+            logger.info(f"[{self.call_id}]  IA (fallback): {fallback_response}")
+            return fallback_response
 
     async def _analyze_sentiment_llm(self, conversation_summary: str) -> str:
         """
@@ -1068,7 +1345,6 @@ class CallHandler:
             result = await self._ask_llm(problem_description, classify_prompt)
 
             # Parser le JSON
-            import json
             try:
                 classification = json.loads(result)
                 tag = classification.get('tag', 'UNKNOWN').upper()
@@ -1099,6 +1375,13 @@ class CallHandler:
                 logger.warning(f"[{self.call_id}] Cache miss: {phrase_key}")
                 return
 
+            # TRACKING: Cache TTS hit (économie API)
+            try:
+                metrics.track_tts_cache_hit()
+                metrics.tts_response_time.labels(source='cache').observe(0.001)  # ~1ms pour cache
+            except Exception as e:
+                logger.debug(f"[{self.call_id}] Failed to track TTS cache hit: {e}")
+
             # Envoyer directement à la queue de sortie (déjà en 8kHz)
             self.is_speaking = True
             await self._send_audio(audio_data)
@@ -1107,15 +1390,124 @@ class CallHandler:
         except Exception as e:
             logger.error(f"[{self.call_id}] Error saying '{phrase_key}': {e}")
 
+    async def _say_smart(self, text: str, **variables):
+        """
+        Dit une phrase en optimisant l'utilisation du cache
+
+        Stratégie :
+        1. Si phrase courte (<30 mots) ET pas de variables → TTS dynamique
+        2. Si variables fournies → Template avec nom/prénom (pas de génération)
+        3. Sinon → Génération ElevenLabs complète
+
+        Args:
+            text: Texte à dire
+            **variables: Variables optionnelles (first_name, last_name, ticket_id, etc.)
+
+        Exemples:
+            await _say_smart("Bonjour Monsieur {last_name}")  # Utilise cache + template
+            await _say_smart("Bonjour", first_name="Pierre")   # Utilise cache
+            await _say_smart("Problème complexe détecté...")  # Génère avec ElevenLabs
+        """
+        try:
+            # Si la phrase contient des placeholders {var} mais qu'aucune variable n'est fournie
+            # on laisse tel quel et on génère
+            if '{' in text and variables:
+                # Remplacer les variables dans le texte
+                text = text.format(**variables)
+
+            # Stratégie 1 : Phrase courte générique → Utiliser cache dynamique ou générer
+            word_count = len(text.split())
+
+            if word_count <= 30 and not variables:
+                # Phrase courte, on peut utiliser le cache dynamique ou générer
+                logger.info(f"[{self.call_id}] Short phrase ({word_count} words), using dynamic TTS")
+                await self._say_dynamic(text)
+                return
+
+            # Stratégie 2 : Phrase avec variables → On a déjà formaté, générer
+            if variables:
+                logger.info(f"[{self.call_id}] Personalized phrase with variables, generating TTS")
+                await self._say_dynamic(text)
+                return
+
+            # Stratégie 3 : Phrase longue générique → Générer
+            logger.info(f"[{self.call_id}] Long generic phrase ({word_count} words), generating TTS")
+            await self._say_dynamic(text)
+
+        except Exception as e:
+            logger.error(f"[{self.call_id}] Error in _say_smart: {e}")
+            # Fallback : utiliser _say_dynamic directement
+            await self._say_dynamic(text)
+
+    async def _say_hybrid(self, cache_key: str, personalized_text: str):
+        """
+        Architecture HYBRIDE pour masquer la latence LLM/TTS
+
+        Joue une phrase du cache immédiatement PENDANT que la phrase
+        personnalisée est générée en arrière-plan.
+
+        Args:
+            cache_key: Clé de la phrase cache à jouer immédiatement (ex: "greet", "filler_hum")
+            personalized_text: Texte personnalisé à générer avec ElevenLabs
+
+        Workflow:
+            1. Lance génération TTS en tâche de fond (non-bloquant)
+            2. Joue phrase cache immédiatement (0ms latence perçue)
+            3. Attend fin génération
+            4. Joue réponse personnalisée
+
+        Exemple:
+            await self._say_hybrid("greet", f"Monsieur {last_name}, je vois votre ticket")
+            → Client entend "Bonjour" IMMÉDIATEMENT
+            → Puis "Monsieur Dupont, je vois votre ticket" après génération
+        """
+        try:
+            # 1. Lancer la génération en arrière-plan (Task asynchrone)
+            generation_task = asyncio.create_task(self._generate_audio(personalized_text))
+
+            # 2. Jouer le cache IMMÉDIATEMENT (masque la latence)
+            await self._say(cache_key)
+            logger.info(f"[{self.call_id}] HYBRID: Cache '{cache_key}' played, waiting for generation...")
+
+            # 3. Attendre que la génération soit prête
+            await generation_task
+
+            logger.info(f"[{self.call_id}] HYBRID: Personalized audio ready and played")
+
+        except Exception as e:
+            logger.error(f"[{self.call_id}] Error in _say_hybrid: {e}")
+            # Fallback: jouer au moins le cache
+            await self._say(cache_key)
+
+    async def _generate_audio(self, text: str):
+        """
+        Génère et joue de l'audio avec ElevenLabs (utilisé par _say_hybrid)
+        Contrairement à _say_dynamic, cette fonction est conçue pour être appelée
+        en tâche de fond.
+        """
+        await self._say_dynamic(text)
+
     async def _say_dynamic(self, text: str):
         """Version Optimisée : Streaming Temps Réel + Modèle Turbo"""
         try:
+            # LOG DÉBOGAGE: Ce que l'IA va dire
+            logger.info(f"[{self.call_id}]  IA PARLE: {text}")
+
             self.is_speaking = True
+            start_time = time.time()
 
             # 1. Cache Check
             cached_audio = self.audio_cache.get_dynamic(text)
             if cached_audio:
                 logger.info(f"[{self.call_id}] Cache HIT dynamic")
+
+                # TRACKING: Cache dynamique hit
+                try:
+                    metrics.track_tts_cache_hit()
+                    metrics.tts_response_time.labels(source='cache').observe(time.time() - start_time)
+                except Exception as e:
+                    logger.debug(f"[{self.call_id}] Failed to track dynamic cache hit: {e}")
+
                 await self._send_audio(cached_audio)
                 self.is_speaking = False
                 return
@@ -1130,24 +1522,31 @@ class CallHandler:
                 stream=True,
                 output_format="mp3_44100_128"
             )
-            
+
             # 3. Conversion à la volée (Pipe)
             pcm_stream = stream_and_convert_to_8khz(audio_stream_iterator)
 
             # 4. Envoi immédiat à Asterisk
             full_audio_for_cache = bytearray()
-            
+
             for chunk in pcm_stream:
-                if not self.output_queue and not self.is_speaking: 
+                if not self.output_queue and not self.is_speaking:
                     break # Stop si interruption
-                    
+
                 self.output_queue.append(chunk)
                 full_audio_for_cache.extend(chunk)
 
             # 5. Mise en cache
             if len(full_audio_for_cache) > 0:
                 self.audio_cache.set_dynamic(text, bytes(full_audio_for_cache))
-            
+
+            # TRACKING: Appel API ElevenLabs
+            try:
+                response_time = time.time() - start_time
+                metrics.track_tts_api_call(characters=len(text), response_time=response_time)
+            except Exception as e:
+                logger.debug(f"[{self.call_id}] Failed to track TTS API call metrics: {e}")
+
             self.is_speaking = False
 
         except Exception as e:
@@ -1243,23 +1642,73 @@ class CallHandler:
             # ANALYSE DE SENTIMENT VIA LLM (amélioration)
             sentiment = await self._analyze_sentiment_llm(summary)
 
+            # Filtrer les mots critiques du summary pour éviter mauvaises interprétations
+            filtered_summary = self._filter_critical_words(summary)
+
+            # Récupérer infos client depuis le contexte
+            client_info = self.context.get('client_info', {})
+            client_name = None
+            client_email = None
+
+            if client_info:
+                first_name = client_info.get('first_name', '')
+                last_name = client_info.get('last_name', '')
+                client_name = f"{first_name} {last_name}".strip() or None
+
+            # Récupérer email depuis user_info si renseigné
+            user_info = self.context.get('user_info', '')
+            if '@' in user_info:
+                # Extraire l'email du user_info
+                import re
+                email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', user_info)
+                if email_match:
+                    client_email = email_match.group(0)
+
+            # Date et heure de l'appel
+            now = datetime.now()
+            call_date = now.date()
+            call_time = now.time()
+
             # Préparer les données du ticket
             ticket_data = {
                 'call_uuid': self.call_id,
                 'phone_number': self.context.get('phone_number', self.call_id),  # Fallback sur call_id
+                'client_name': client_name,
+                'client_email': client_email,
                 'problem_type': self.context.get('problem_type', 'unknown'),
                 'status': status,
                 'sentiment': sentiment,
-                'summary': summary,
+                'summary': filtered_summary,  # Summary filtré sans mots critiques
                 'duration_seconds': call_duration,
                 'tag': classification['tag'],
-                'severity': classification['severity']
+                'severity': classification['severity'],
+                'call_date': call_date,
+                'call_time': call_time
             }
 
             # Sauvegarder dans la DB
             ticket_id = await db_utils.create_ticket(ticket_data)
             if ticket_id:
                 logger.info(f"[{self.call_id}] Ticket saved: {ticket_id} (tag: {classification['tag']}, sentiment: {sentiment})")
+
+                # TRACKING MÉTRIQUES PROMETHEUS
+                try:
+                    # Enregistrer l'appel complété
+                    metrics.track_call_completed(
+                        status=status,
+                        problem_type=self.context.get('problem_type', 'unknown'),
+                        duration=call_duration,
+                        sentiment=sentiment
+                    )
+
+                    # Enregistrer le ticket créé
+                    metrics.track_ticket_created(
+                        severity=classification['severity'],
+                        tag=classification['tag'],
+                        problem_type=self.context.get('problem_type', 'unknown')
+                    )
+                except Exception as e:
+                    logger.error(f"[{self.call_id}] Failed to track metrics: {e}")
             else:
                 logger.warning(f"[{self.call_id}] Failed to save ticket")
 
@@ -1271,15 +1720,15 @@ class CallHandler:
             if self.deepgram_connection:
                 try:
                     await self.deepgram_connection.finish()
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"[{self.call_id}] Error closing Deepgram connection: {e}")
 
             # Fermer le writer
             try:
                 self.writer.close()
                 await self.writer.wait_closed()
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"[{self.call_id}] Error closing writer: {e}")
 
             logger.info(f"[{self.call_id}] Cleanup completed")
 
@@ -1311,6 +1760,31 @@ class AudioSocketServer:
                 await writer.wait_closed()
                 return
 
+            # Rejeter les requêtes HTTP/HTTPS (scans de sécurité, bots)
+            try:
+                first_bytes_str = identifier_bytes[:20].decode('utf-8', errors='ignore')
+                if first_bytes_str.startswith(('GET ', 'POST', 'HEAD', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'CONNECT ')):
+                    logger.warning(f"Rejected HTTP request from scanner: {first_bytes_str[:50]}")
+                    writer.close()
+                    await writer.wait_closed()
+                    return
+            except Exception:
+                pass  # Not HTTP, continue
+
+            # Rejeter les handshakes TLS/SSL (HTTPS scans)
+            if len(identifier_bytes) >= 3 and identifier_bytes[0] == 0x16 and identifier_bytes[1] == 0x03:
+                logger.warning(f"Rejected TLS/SSL handshake from scanner")
+                writer.close()
+                await writer.wait_closed()
+                return
+
+            # Rejeter les connexions RDP (Remote Desktop Protocol)
+            if len(identifier_bytes) >= 3 and identifier_bytes[0] == 0x03 and b'Cookie:' in identifier_bytes:
+                logger.warning(f"Rejected RDP connection attempt")
+                writer.close()
+                await writer.wait_closed()
+                return
+
             # Parser l'identifiant selon le protocole AudioSocket
             logger.info(f"Handshake bytes (first 20): {identifier_bytes[:20].hex()}")
 
@@ -1338,7 +1812,7 @@ class AudioSocketServer:
             else:
                 # Essayer de décoder en texte UTF-8 (ancien format)
                 try:
-                    identifier_str = identifier_bytes.decode('utf-8', errors='ignore').strip('\x00').strip()
+                    identifier_str = identifier_bytes.decode('utf-8', errors='ignore').replace('\x00', '').strip()
                     if identifier_str:
                         call_id = identifier_str
                         logger.info(f"[{call_id}] New call connected (text format)")
@@ -1350,6 +1824,9 @@ class AudioSocketServer:
                     logger.warning(f"Failed to parse handshake: {e}")
                     call_id = identifier_bytes[:16].hex()
                     logger.info(f"[{call_id}] New call connected (fallback format)")
+
+            # SÉCURITÉ : Nettoyer call_id de tous les octets nuls et caractères dangereux
+            call_id = sanitize_call_id(call_id)
 
             # Vérifier la limite de calls simultanés
             if self.active_calls >= config.MAX_CONCURRENT_CALLS:
@@ -1390,10 +1867,10 @@ class AudioSocketServer:
 
         addr = server.sockets[0].getsockname()
         logger.info("=" * 60)
-        logger.info(f"🎙️  AudioSocket Server started on {addr[0]}:{addr[1]}")
-        logger.info(f"📦 Cache loaded: {len(self.audio_cache.cache)} phrases")
-        logger.info(f"⚙️  Process pool workers: {config.PROCESS_POOL_WORKERS}")
-        logger.info(f"📞 Max concurrent calls: {config.MAX_CONCURRENT_CALLS}")
+        logger.info(f"  AudioSocket Server started on {addr[0]}:{addr[1]}")
+        logger.info(f" Cache loaded: {len(self.audio_cache.cache)} phrases")
+        logger.info(f"  Process pool workers: {config.PROCESS_POOL_WORKERS}")
+        logger.info(f" Max concurrent calls: {config.MAX_CONCURRENT_CALLS}")
         logger.info("=" * 60)
 
         async with server:
@@ -1411,7 +1888,7 @@ async def main():
 
     # Vérifier les clés API
     if not all([config.DEEPGRAM_API_KEY, config.GROQ_API_KEY, config.ELEVENLABS_API_KEY]):
-        logger.error("❌ Missing API keys in .env file")
+        logger.error(" Missing API keys in .env file")
         sys.exit(1)
 
     # INITIALISER LES POOLS DE BASE DE DONNÉES
@@ -1420,8 +1897,17 @@ async def main():
         await db_utils.init_db_pools()
         logger.info("✓ Database pools ready")
     except Exception as e:
-        logger.error(f"❌ Failed to initialize database: {e}")
-        logger.warning("⚠️  Continuing without database (tickets won't be saved)")
+        logger.error(f" Failed to initialize database: {e}")
+        logger.warning("  Continuing without database (tickets won't be saved)")
+
+    # INITIALISER LE SERVEUR DE MÉTRIQUES PROMETHEUS
+    try:
+        logger.info("Starting Prometheus metrics server on port 9091...")
+        metrics.init_metrics_server(port=9091)
+        logger.info("✓ Metrics server ready")
+    except Exception as e:
+        logger.error(f" Failed to start metrics server: {e}")
+        logger.warning("  Continuing without metrics")
 
     # Créer le serveur
     server = AudioSocketServer()
